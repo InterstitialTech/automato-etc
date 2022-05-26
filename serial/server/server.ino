@@ -17,6 +17,16 @@ struct ServerData {
 
 ServerData serverdata;
 
+MapField memoryMap[] = 
+  { map_field(ServerData, name, ff_char)
+  , map_field(ServerData, targettemp, ff_float)
+  }; 
+
+// MapEntry memoryMap[] = 
+//   { MapEntry { "name", 0, 25 }
+//   , MapEntry { "targettemp", 25, 4 }
+//   }; 
+
 Automato automato(2, (void*)&serverdata, sizeof(serverdata), true);
 
 void setup()

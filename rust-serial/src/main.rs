@@ -19,6 +19,16 @@ use std::time::Duration;
 use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
 
 fn main() {
+    // unsafe {
+    //     match readMessageFiles() {
+    //         Ok(()) => (),
+    //         Err(e) => {
+    //             println!("error: {:?}", e)
+    //         }
+    //     }
+    // }
+    // writeMessageFiles();
+
     match err_main() {
         Ok(()) => (),
         Err(e) => {
@@ -123,6 +133,15 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                         .takes_value(true),
                 ),
         )
+        .subcommand(
+            Command::new("readfield")
+                .about("read field info from automato memory map")
+                .arg(
+                    Arg::with_name("index")
+                        .value_name("NUMBER")
+                        .takes_value(true),
+                ),
+        )
         .get_matches();
 
     let (port, baud, automatoaddr) = match (
@@ -144,6 +163,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
 
     let mut retmsg = mb.clone();
 
+    // set up the outgoing message.
     match matches.subcommand() {
         Some(("writepin", sub_matches)) => {
             let (pin, val) = match (sub_matches.value_of("pin"), sub_matches.value_of("value")) {
@@ -205,6 +225,13 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             };
             unsafe { automatomsg::setup_readmem(&mut mb.payload, addr, len) };
         }
+        Some(("readfield", sub_matches)) => {
+            let index = match sub_matches.value_of("index") {
+                Some(istr) => istr.parse::<u16>()?,
+                _ => bail!("arg failure"),
+            };
+            unsafe { automatomsg::setup_readfield(&mut mb.payload, index) };
+        }
         meh => {
             bail!("unhandled command! {:?}", meh)
         }
@@ -217,19 +244,58 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         char_size: CharSize::Bits8,
         parity: Parity::ParityNone,
         stop_bits: StopBits::Stop1,
-        flow_control: FlowControl::FlowSoftware,
+        flow_control: FlowControl::FlowNone,
     };
     port.configure(&ps)?;
 
+    let readReply = false;
     unsafe {
         writeMessage(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
-        sleep(Duration::from_millis(100));
-        readMessage(&mut port, &mut retmsg, &mut fromid);
+        sleep(Duration::from_millis(120));
 
-        println!("reply from: {}", fromid);
-        automatomsg::print_Payload(&retmsg.payload);
+        if readReply {
+            while match readMessage(&mut port, &mut retmsg, &mut fromid) {
+                Ok(true) => {
+                    println!("reply from: {}", fromid);
+                    // for i in 0..retmsg.buf.len() {
+                    //     let c = retmsg.buf[i];
+                    //     println!("{} - {}", c, c as char);
+                    // }
+                    automatomsg::print_payload(&retmsg.payload);
+                    true
+                }
+                Ok(false) => {
+                    println!("here");
+                    false
+                }
+                Err(e) => {
+                    println!("error: {:?}", e);
+                    false
+                }
+            } {}
+        } else {
+            let mut monobuf = [0; 1];
+            let mut count = 0;
+            while port.read_exact(&mut monobuf).is_ok() {
+                // just print the chars we read.  good for debug from Serial.print() on the automato.
+                // print!("{}", monobuf[0] as char);
+
+                // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
+
+                // print the index, number, and char
+                println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
+                count = count + 1;
+            }
+            // let mut buf = String::new();
+            // let mut monobuf = [0; 1];
+            // port.read_exact(&mut monobuf)?;
+            // buf.push(monobuf[0] as char);
+            // if monobuf[0] as char == '\n' {
+            //     println!("msg: {}", buf);
+            // }
+        }
     }
     Ok(())
 }
@@ -327,16 +393,40 @@ unsafe fn readMessage(
 ) -> Result<bool, serial::Error> {
     let mut monobuf = [0; 1];
     port.read_exact(&mut monobuf)?;
+    println!(
+        "monobuf -'m': {} - {}",
+        monobuf[0] as u8, monobuf[0] as char
+    );
     if monobuf[0] as char != 'm' {
         return Ok(false);
     }
     port.read_exact(&mut monobuf)?;
     *fromid = monobuf[0];
+    println!(
+        "monobuf fromid: {} - {}",
+        monobuf[0] as u8, monobuf[0] as char
+    );
 
     port.read_exact(&mut monobuf)?;
     let sz = monobuf[0] as usize;
+    println!(
+        "monobuf size: {} - {}",
+        monobuf[0] as u8, monobuf[0] as char
+    );
 
-    port.read_exact(&mut msg.buf[0..sz])?;
+    port.read_exact(&mut monobuf)?;
+    let sz = monobuf[0] as usize;
+    println!(
+        "monobuf type: {} - {}",
+        monobuf[0] as u8, monobuf[0] as char
+    );
+    msg.buf[0] = monobuf[0];
+
+    if (sz > 0) {
+        port.read_exact(&mut msg.buf[1..sz])?;
+    }
+
+    // port.read_exact(&mut msg.buf[0..sz])?;
 
     Ok(true)
 }
@@ -478,7 +568,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
     }
 
     unsafe {
-        automatomsg::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000);
+        automatomsg::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 7);
         let mut onfile = File::create("readinforeply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
@@ -531,6 +621,77 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
             automatomsg::payloadSize(&mutmsg.payload)
         );
     }
+
+    unsafe {
+        automatomsg::setup_readfield(&mut mutmsg.payload, 1);
+        let mut onfile = File::create("readfield.bin")?;
+        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+
+        println!(
+            "setup_readfield: {}",
+            automatomsg::payloadSize(&mutmsg.payload)
+        );
+    };
+
+    unsafe {
+        automatomsg::setup_readfieldreply(&mut mutmsg.payload, 1, 20, 5, "wat".as_bytes());
+        let mut onfile = File::create("readfieldreply.bin")?;
+        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+
+        println!(
+            "setup_readfieldreply: {}",
+            automatomsg::payloadSize(&mutmsg.payload)
+        );
+    };
+
+    Ok(())
+}
+
+unsafe fn readMsgFile(name: &str) -> Result<(), Box<dyn Error>> {
+    let mut mfile = File::open(name)?;
+
+    println!("");
+    println!("reading: {}", name);
+
+    // message with dummy payload.
+    let mut mutmsg = automatomsg::Msgbuf {
+        payload: Payload {
+            payload_type: automatomsg::PayloadType::PtAck as u8,
+            data: PayloadData { pin: 0 },
+        },
+    };
+
+    mfile.read(&mut mutmsg.buf);
+
+    // for i in 0..mutmsg.buf.len() {
+    //     let c = mutmsg.buf[i];
+    //     println!("{} - {}", c, c as char);
+    // }
+    automatomsg::print_payload(&mutmsg.payload);
+
+    Ok(())
+}
+
+unsafe fn readMessageFiles() -> Result<(), Box<dyn Error>> {
+    readMsgFile("ack.bin")?;
+    readMsgFile("fail.bin")?;
+    readMsgFile("pinmode.bin")?;
+    readMsgFile("readpin.bin")?;
+    readMsgFile("readpinreply.bin")?;
+    readMsgFile("writepin.bin")?;
+    readMsgFile("readanalog.bin")?;
+    readMsgFile("readanalogreply.bin")?;
+    readMsgFile("readmem.bin")?;
+    readMsgFile("readmemreply.bin")?;
+    readMsgFile("writemem.bin")?;
+    readMsgFile("readinfo.bin")?;
+    readMsgFile("readinforeply.bin")?;
+    readMsgFile("readhumidity.bin")?;
+    readMsgFile("readhumidityreply.bin")?;
+    readMsgFile("readtemperature.bin")?;
+    readMsgFile("readtemperaturereply.bin")?;
+    readMsgFile("readfield.bin")?;
+    readMsgFile("readfieldreply.bin")?;
 
     Ok(())
 }

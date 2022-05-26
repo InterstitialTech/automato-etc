@@ -18,13 +18,15 @@ pub enum PayloadType {
     PtReadmemreply = 7,
     PtWritemem = 8,
     PtReadinfo = 9,
-    PtReadinforeply = 10,
-    PtReadhumidity = 11,
-    PtReadhumidityreply = 12,
-    PtReadtemperature = 13,
-    PtReadtemperaturereply = 14,
-    PtReadanalog = 15,
-    PtReadanalogreply = 16,
+    PtReadhumidity = 10,
+    PtReadhumidityreply = 11,
+    PtReadtemperature = 12,
+    PtReadtemperaturereply = 13,
+    PtReadanalog = 14,
+    PtReadanalogreply = 15,
+    PtReadfield = 16,
+    PtReadfieldreply = 17,
+    PtReadinforeply = 18,
 }
 
 #[derive(Clone, Copy)]
@@ -34,6 +36,7 @@ pub struct RemoteInfo {
     pub protoversion: f32,
     pub macAddress: u64,
     pub datalen: u16,
+    pub fieldcount: u16,
 }
 
 #[derive(Clone, Copy)]
@@ -95,6 +98,24 @@ pub struct Writemem {
 #[derive(Clone, Copy)]
 #[repr(C)]
 #[repr(packed)]
+pub struct ReadField {
+    pub index: u16,
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+#[repr(packed)]
+pub struct ReadFieldReply {
+    pub index: u16,
+    pub offset: u16,
+    pub length: u8,
+    pub format: u8,
+    pub name: [u8; 25],
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+#[repr(packed)]
 pub union PayloadData {
     pub pinval: Pinval,
     pub pinmode: Pinmode,
@@ -103,6 +124,8 @@ pub union PayloadData {
     pub readmemreply: ReadmemReply,
     pub writemem: Writemem,
     pub remoteinfo: RemoteInfo,
+    pub readfield: ReadField,
+    pub readfieldreply: ReadFieldReply,
     pub failcode: u8,
     pub pin: u8,
     pub f: f32,
@@ -185,6 +208,8 @@ pub fn payloadSize(p: &Payload) -> usize {
             PayloadType::PtReadhumidityreply => size_of::<u8>() + size_of::<f32>(),
             PayloadType::PtReadtemperature => size_of::<u8>(),
             PayloadType::PtReadtemperaturereply => size_of::<u8>() + size_of::<f32>(),
+            PayloadType::PtReadfield => size_of::<u8>() + size_of::<ReadField>(),
+            PayloadType::PtReadfieldreply => size_of::<u8>() + size_of::<ReadFieldReply>(),
         },
         None => 0,
     }
@@ -270,11 +295,33 @@ pub fn setup_readinfo(p: &mut Payload) {
     p.payload_type = PayloadType::PtReadinfo as u8;
 }
 
-pub fn setup_readinforeply(p: &mut Payload, protoversion: f32, macAddress: u64, datalen: u16) {
+pub fn setup_readinforeply(
+    p: &mut Payload,
+    protoversion: f32,
+    macAddress: u64,
+    datalen: u16,
+    fieldcount: u16,
+) {
     p.payload_type = PayloadType::PtReadinforeply as u8;
     p.data.remoteinfo.protoversion = protoversion;
     p.data.remoteinfo.macAddress = macAddress;
     p.data.remoteinfo.datalen = datalen;
+    p.data.remoteinfo.fieldcount = fieldcount;
+}
+
+pub fn setup_readfield(p: &mut Payload, index: u16) {
+    p.payload_type = PayloadType::PtReadfield as u8;
+    p.data.readfield.index = index;
+}
+
+pub fn setup_readfieldreply(p: &mut Payload, index: u16, offset: u16, length: u8, name: &[u8]) {
+    p.payload_type = PayloadType::PtReadfieldreply as u8;
+    p.data.readfieldreply.index = index;
+    p.data.readfieldreply.offset = offset;
+    p.data.readfieldreply.length = length;
+    unsafe {
+        p.data.readfieldreply.name[0..name.len()].copy_from_slice(&name);
+    }
 }
 
 pub fn setup_readhumidity(p: &mut Payload) {
@@ -295,11 +342,12 @@ pub fn setup_readtemperaturereply(p: &mut Payload, temperature: f32) {
     p.data.f = temperature;
 }
 
-pub unsafe fn print_Payload(p: &Payload) {
+pub unsafe fn print_payload(p: &Payload) {
     println!("message payload");
 
     match PayloadType::from_u8(p.payload_type) {
         None => println!("invalid type: {}", p.payload_type),
+
         Some(pt) => {
             match pt {
                 PayloadType::PtAck => {
@@ -371,6 +419,7 @@ pub unsafe fn print_Payload(p: &Payload) {
                     println!("protoversion:{}", { p.data.remoteinfo.protoversion });
                     println!("macAddress:{}", { p.data.remoteinfo.macAddress });
                     println!("datalen:{}", { p.data.remoteinfo.datalen });
+                    println!("fieldcount:{}", { p.data.remoteinfo.fieldcount });
                 }
                 PayloadType::PtReadhumidity => {
                     println!("PtReadhumidity");
@@ -385,6 +434,24 @@ pub unsafe fn print_Payload(p: &Payload) {
                 PayloadType::PtReadtemperaturereply => {
                     println!("PtReadtemperaturereply");
                     println!("temperature:{}", { p.data.f });
+                }
+
+                PayloadType::PtReadfield => {
+                    println!("PtReadfieldreply");
+                    println!("index: {}", p.data.readfieldreply.index);
+                }
+                PayloadType::PtReadfieldreply => {
+                    println!("PtReadfieldreply");
+                    println!("index: {}", p.data.readfieldreply.index);
+                    println!("offset: {}", p.data.readfieldreply.offset);
+                    println!("length: {}", p.data.readfieldreply.length);
+                    println!("format: {}", p.data.readfieldreply.format);
+                    print!("name: ");
+                    for i in 0..p.data.readfieldreply.name.len() {
+                        let c = p.data.readfieldreply.name[i];
+                        println!("{}", c);
+                    }
+                    println!("");
                 }
             }
         }
