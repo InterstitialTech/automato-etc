@@ -18,15 +18,15 @@ pub enum PayloadType {
     PtReadmemreply = 7,
     PtWritemem = 8,
     PtReadinfo = 9,
-    PtReadhumidity = 10,
-    PtReadhumidityreply = 11,
-    PtReadtemperature = 12,
-    PtReadtemperaturereply = 13,
-    PtReadanalog = 14,
-    PtReadanalogreply = 15,
-    PtReadfield = 16,
-    PtReadfieldreply = 17,
-    PtReadinforeply = 18,
+    PtReadinforeply = 10,
+    PtReadhumidity = 11,
+    PtReadhumidityreply = 12,
+    PtReadtemperature = 13,
+    PtReadtemperaturereply = 14,
+    PtReadanalog = 15,
+    PtReadanalogreply = 16,
+    PtReadfield = 17,
+    PtReadfieldreply = 18,
 }
 
 #[derive(Clone, Copy)]
@@ -448,8 +448,7 @@ pub unsafe fn print_payload(p: &Payload) {
                     println!("format: {}", p.data.readfieldreply.format);
                     print!("name: ");
                     for i in 0..p.data.readfieldreply.name.len() {
-                        let c = p.data.readfieldreply.name[i];
-                        println!("{}", c);
+                        print!("{}", p.data.readfieldreply.name[i] as char);
                     }
                     println!("");
                 }

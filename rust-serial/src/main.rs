@@ -248,7 +248,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     };
     port.configure(&ps)?;
 
-    let readReply = false;
+    let readReply = true;
     unsafe {
         writeMessage(&mut port, &mb, automatoaddr)?;
 
