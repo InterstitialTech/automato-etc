@@ -256,7 +256,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         sleep(Duration::from_millis(420));
 
         if readReply {
-            while match readMessage(&mut port, &mut retmsg, &mut fromid) {
+            match readMessage(&mut port, &mut retmsg, &mut fromid) {
                 Ok(true) => {
                     println!("reply from: {}", fromid);
                     // for i in 0..retmsg.buf.len() {
@@ -264,17 +264,14 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     //     println!("{} - {}", c, c as char);
                     // }
                     automatomsg::print_payload(&retmsg.payload);
-                    true
                 }
                 Ok(false) => {
                     println!("here");
-                    false
                 }
                 Err(e) => {
                     println!("error: {:?}", e);
-                    false
                 }
-            } {}
+            }
         } else {
             let mut monobuf = [0; 1];
             let mut count = 0;
@@ -392,6 +389,7 @@ unsafe fn readMessage(
     fromid: &mut u8,
 ) -> Result<bool, serial::Error> {
     let mut monobuf = [0; 1];
+
     port.read_exact(&mut monobuf)?;
     println!(
         "monobuf -'m': {} - {}",
@@ -400,6 +398,7 @@ unsafe fn readMessage(
     if monobuf[0] as char != 'm' {
         return Ok(false);
     }
+
     port.read_exact(&mut monobuf)?;
     *fromid = monobuf[0];
     println!(
@@ -414,19 +413,17 @@ unsafe fn readMessage(
         monobuf[0] as u8, monobuf[0] as char
     );
 
-    port.read_exact(&mut monobuf)?;
-    let sz = monobuf[0] as usize;
-    println!(
-        "monobuf type: {} - {}",
-        monobuf[0] as u8, monobuf[0] as char
-    );
-    msg.buf[0] = monobuf[0];
+    // port.read_exact(&mut monobuf)?;
+    // println!(
+    //     "monobuf type: {} - {}",
+    //     monobuf[0] as u8, monobuf[0] as char
+    // );
+    // msg.buf[0] = monobuf[0];
 
     if (sz > 0) {
-        port.read_exact(&mut msg.buf[1..(sz - 1)])?;
+        // port.read_exact(&mut msg.buf[0..sz])?;
+        port.read_exact(&mut msg.buf[0..sz])?;
     }
-
-    // port.read_exact(&mut msg.buf[0..sz])?;
 
     Ok(true)
 }
