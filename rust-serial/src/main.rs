@@ -391,37 +391,17 @@ unsafe fn readMessage(
     let mut monobuf = [0; 1];
 
     port.read_exact(&mut monobuf)?;
-    println!(
-        "monobuf -'m': {} - {}",
-        monobuf[0] as u8, monobuf[0] as char
-    );
     if monobuf[0] as char != 'm' {
         return Ok(false);
     }
 
     port.read_exact(&mut monobuf)?;
     *fromid = monobuf[0];
-    println!(
-        "monobuf fromid: {} - {}",
-        monobuf[0] as u8, monobuf[0] as char
-    );
 
     port.read_exact(&mut monobuf)?;
     let sz = monobuf[0] as usize;
-    println!(
-        "monobuf size: {} - {}",
-        monobuf[0] as u8, monobuf[0] as char
-    );
-
-    // port.read_exact(&mut monobuf)?;
-    // println!(
-    //     "monobuf type: {} - {}",
-    //     monobuf[0] as u8, monobuf[0] as char
-    // );
-    // msg.buf[0] = monobuf[0];
 
     if (sz > 0) {
-        // port.read_exact(&mut msg.buf[0..sz])?;
         port.read_exact(&mut msg.buf[0..sz])?;
     }
 
