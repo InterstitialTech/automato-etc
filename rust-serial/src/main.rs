@@ -253,7 +253,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         writeMessage(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
-        sleep(Duration::from_millis(120));
+        sleep(Duration::from_millis(420));
 
         if readReply {
             while match readMessage(&mut port, &mut retmsg, &mut fromid) {
@@ -423,7 +423,7 @@ unsafe fn readMessage(
     msg.buf[0] = monobuf[0];
 
     if (sz > 0) {
-        port.read_exact(&mut msg.buf[1..sz])?;
+        port.read_exact(&mut msg.buf[1..(sz - 1)])?;
     }
 
     // port.read_exact(&mut msg.buf[0..sz])?;
@@ -441,7 +441,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_ack(&mut mutmsg.payload);
-        let mut onfile = File::create("ack.bin")?;
+        let mut onfile = File::create("rustmsgs-out/ack.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!("setup_ack: {}", automatomsg::payloadSize(&mutmsg.payload));
@@ -449,7 +449,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_fail(&mut mutmsg.payload, ResultCode::RcInvalidRhRouterError);
-        let mut onfile = File::create("fail.bin")?;
+        let mut onfile = File::create("rustmsgs-out/fail.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!("setup_fail: {}", automatomsg::payloadSize(&mutmsg.payload));
@@ -457,7 +457,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_pinmode(&mut mutmsg.payload, 26, 2);
-        let mut onfile = File::create("pinmode.bin")?;
+        let mut onfile = File::create("rustmsgs-out/pinmode.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -468,7 +468,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readpin(&mut mutmsg.payload, 22);
-        let mut onfile = File::create("readpin.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readpin.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -479,7 +479,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readpinreply(&mut mutmsg.payload, 26, 1);
-        let mut onfile = File::create("readpinreply.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readpinreply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -490,7 +490,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_writepin(&mut mutmsg.payload, 15, 1);
-        let mut onfile = File::create("writepin.bin")?;
+        let mut onfile = File::create("rustmsgs-out/writepin.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -501,7 +501,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readanalog(&mut mutmsg.payload, 27);
-        let mut onfile = File::create("readanalog.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readanalog.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -512,7 +512,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readanalogreply(&mut mutmsg.payload, 6, 500);
-        let mut onfile = File::create("readanalogreply.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readanalogreply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -523,7 +523,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readmem(&mut mutmsg.payload, 1500, 75);
-        let mut onfile = File::create("readmem.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readmem.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -535,7 +535,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
     unsafe {
         let test = [1, 2, 3, 4, 5];
         automatomsg::setup_readmemreply(&mut mutmsg.payload, &test);
-        let mut onfile = File::create("readmemreply.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readmemreply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -547,7 +547,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
     unsafe {
         let test = [5, 4, 3, 2, 1];
         automatomsg::setup_writemem(&mut mutmsg.payload, 5678, &test);
-        let mut onfile = File::create("writemem.bin")?;
+        let mut onfile = File::create("rustmsgs-out/writemem.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -558,7 +558,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readinfo(&mut mutmsg.payload);
-        let mut onfile = File::create("readinfo.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readinfo.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -569,7 +569,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 7);
-        let mut onfile = File::create("readinforeply.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readinforeply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -580,7 +580,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readhumidity(&mut mutmsg.payload);
-        let mut onfile = File::create("readhumidity.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readhumidity.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -591,7 +591,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readhumidityreply(&mut mutmsg.payload, 45.7);
-        let mut onfile = File::create("readhumidityreply.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readhumidityreply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -602,7 +602,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readtemperature(&mut mutmsg.payload);
-        let mut onfile = File::create("readtemperature.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readtemperature.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -613,7 +613,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readtemperaturereply(&mut mutmsg.payload, 98.6);
-        let mut onfile = File::create("readtemperaturereply.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readtemperaturereply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -624,7 +624,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
 
     unsafe {
         automatomsg::setup_readfield(&mut mutmsg.payload, 1);
-        let mut onfile = File::create("readfield.bin")?;
+        let mut onfile = File::create("rustmsgs-out/readfield.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -634,8 +634,8 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
     };
 
     unsafe {
-        automatomsg::setup_readfieldreply(&mut mutmsg.payload, 1, 20, 5, "wat".as_bytes());
-        let mut onfile = File::create("readfieldreply.bin")?;
+        automatomsg::setup_readfieldreply(&mut mutmsg.payload, 1, 20, 5, 2, "wat".as_bytes());
+        let mut onfile = File::create("rustmsgs-out/readfieldreply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
         println!(
@@ -673,25 +673,25 @@ unsafe fn readMsgFile(name: &str) -> Result<(), Box<dyn Error>> {
 }
 
 unsafe fn readMessageFiles() -> Result<(), Box<dyn Error>> {
-    readMsgFile("ack.bin")?;
-    readMsgFile("fail.bin")?;
-    readMsgFile("pinmode.bin")?;
-    readMsgFile("readpin.bin")?;
-    readMsgFile("readpinreply.bin")?;
-    readMsgFile("writepin.bin")?;
-    readMsgFile("readanalog.bin")?;
-    readMsgFile("readanalogreply.bin")?;
-    readMsgFile("readmem.bin")?;
-    readMsgFile("readmemreply.bin")?;
-    readMsgFile("writemem.bin")?;
-    readMsgFile("readinfo.bin")?;
-    readMsgFile("readinforeply.bin")?;
-    readMsgFile("readhumidity.bin")?;
-    readMsgFile("readhumidityreply.bin")?;
-    readMsgFile("readtemperature.bin")?;
-    readMsgFile("readtemperaturereply.bin")?;
-    readMsgFile("readfield.bin")?;
-    readMsgFile("readfieldreply.bin")?;
+    readMsgFile("cmsgs-out/ack.bin")?;
+    readMsgFile("cmsgs-out/fail.bin")?;
+    readMsgFile("cmsgs-out/pinmode.bin")?;
+    readMsgFile("cmsgs-out/readpin.bin")?;
+    readMsgFile("cmsgs-out/readpinreply.bin")?;
+    readMsgFile("cmsgs-out/writepin.bin")?;
+    readMsgFile("cmsgs-out/readanalog.bin")?;
+    readMsgFile("cmsgs-out/readanalogreply.bin")?;
+    readMsgFile("cmsgs-out/readmem.bin")?;
+    readMsgFile("cmsgs-out/readmemreply.bin")?;
+    readMsgFile("cmsgs-out/writemem.bin")?;
+    readMsgFile("cmsgs-out/readinfo.bin")?;
+    readMsgFile("cmsgs-out/readinforeply.bin")?;
+    readMsgFile("cmsgs-out/readhumidity.bin")?;
+    readMsgFile("cmsgs-out/readhumidityreply.bin")?;
+    readMsgFile("cmsgs-out/readtemperature.bin")?;
+    readMsgFile("cmsgs-out/readtemperaturereply.bin")?;
+    readMsgFile("cmsgs-out/readfield.bin")?;
+    readMsgFile("cmsgs-out/readfieldreply.bin")?;
 
     Ok(())
 }

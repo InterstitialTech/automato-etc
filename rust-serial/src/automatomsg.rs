@@ -314,11 +314,19 @@ pub fn setup_readfield(p: &mut Payload, index: u16) {
     p.data.readfield.index = index;
 }
 
-pub fn setup_readfieldreply(p: &mut Payload, index: u16, offset: u16, length: u8, name: &[u8]) {
+pub fn setup_readfieldreply(
+    p: &mut Payload,
+    index: u16,
+    offset: u16,
+    length: u8,
+    format: u8,
+    name: &[u8],
+) {
     p.payload_type = PayloadType::PtReadfieldreply as u8;
     p.data.readfieldreply.index = index;
     p.data.readfieldreply.offset = offset;
     p.data.readfieldreply.length = length;
+    p.data.readfieldreply.format = format;
     unsafe {
         p.data.readfieldreply.name[0..name.len()].copy_from_slice(&name);
     }
