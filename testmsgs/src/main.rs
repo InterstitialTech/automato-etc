@@ -1,16 +1,16 @@
+use automato::automatomsg as am;
+use automato::automatomsg::{
+    AnalogPinval, Message, Msgbuf, Payload, PayloadData, PayloadType, Pinmode, Pinval, Readmem,
+    ReadmemReply, RemoteInfo, ResultCode, Writemem,
+};
 use clap::{Arg, Command, SubCommand};
+use num_derive;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use simple_error::bail;
-use std::io::{Read, Write};
-mod automatomsg;
-use automatomsg::{
-    AnalogPinval, Message, Payload, PayloadData, PayloadType, Pinmode, Pinval, Readmem,
-    ReadmemReply, RemoteInfo, ResultCode, Writemem,
-};
-use num_derive;
 use std::error::Error;
 use std::fs::File;
+use std::io::{Read, Write};
 use std::mem::size_of;
 use std::str::FromStr;
 use std::thread::sleep;
@@ -157,8 +157,8 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         _ => bail!("arg failure"),
     };
 
-    let mut mb = automatomsg::Msgbuf {
-        buf: [0; automatomsg::RH_RF95_MAX_MESSAGE_LEN],
+    let mut mb = Msgbuf {
+        buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
     };
 
     let mut retmsg = mb.clone();
@@ -171,7 +171,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 _ => bail!("arg failure"),
             };
 
-            unsafe { automatomsg::setup_writepin(&mut mb.payload, pin, val) };
+            unsafe { am::setup_writepin(&mut mb.payload, pin, val) };
         }
         Some(("pinmode", sub_matches)) => {
             let (pin, val) = match (sub_matches.value_of("pin"), sub_matches.value_of("value")) {
@@ -179,30 +179,30 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 _ => bail!("arg failure"),
             };
 
-            unsafe { automatomsg::setup_pinmode(&mut mb.payload, pin, val) };
+            unsafe { am::setup_pinmode(&mut mb.payload, pin, val) };
         }
         Some(("readpin", sub_matches)) => {
             let pin = match sub_matches.value_of("pin") {
                 Some(pinstr) => pinstr.parse::<u8>()?,
                 _ => bail!("arg failure"),
             };
-            unsafe { automatomsg::setup_readpin(&mut mb.payload, pin) };
+            unsafe { am::setup_readpin(&mut mb.payload, pin) };
         }
         Some(("readanalog", sub_matches)) => {
             let pin = match sub_matches.value_of("pin") {
                 Some(pinstr) => pinstr.parse::<u8>()?,
                 _ => bail!("arg failure"),
             };
-            unsafe { automatomsg::setup_readanalog(&mut mb.payload, pin) };
+            unsafe { am::setup_readanalog(&mut mb.payload, pin) };
         }
         Some(("readinfo", sub_matches)) => {
-            unsafe { automatomsg::setup_readinfo(&mut mb.payload) };
+            unsafe { am::setup_readinfo(&mut mb.payload) };
         }
         Some(("readhumidity", sub_matches)) => {
-            unsafe { automatomsg::setup_readhumidity(&mut mb.payload) };
+            unsafe { am::setup_readhumidity(&mut mb.payload) };
         }
         Some(("readtemperature", sub_matches)) => {
-            unsafe { automatomsg::setup_readtemperature(&mut mb.payload) };
+            unsafe { am::setup_readtemperature(&mut mb.payload) };
         }
         Some(("writemem", sub_matches)) => {
             let (addr, val) = match (
@@ -213,7 +213,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 _ => bail!("arg failure"),
             };
 
-            unsafe { automatomsg::setup_writemem(&mut mb.payload, addr, val.as_slice()) };
+            unsafe { am::setup_writemem(&mut mb.payload, addr, val.as_slice()) };
         }
         Some(("readmem", sub_matches)) => {
             let (addr, len) = match (
@@ -223,14 +223,14 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 (Some(addrstr), Some(lenstr)) => (addrstr.parse::<u16>()?, lenstr.parse::<u8>()?),
                 _ => bail!("arg failure"),
             };
-            unsafe { automatomsg::setup_readmem(&mut mb.payload, addr, len) };
+            unsafe { am::setup_readmem(&mut mb.payload, addr, len) };
         }
         Some(("readfield", sub_matches)) => {
             let index = match sub_matches.value_of("index") {
                 Some(istr) => istr.parse::<u16>()?,
                 _ => bail!("arg failure"),
             };
-            unsafe { automatomsg::setup_readfield(&mut mb.payload, index) };
+            unsafe { am::setup_readfield(&mut mb.payload, index) };
         }
         meh => {
             bail!("unhandled command! {:?}", meh)
@@ -263,7 +263,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     //     let c = retmsg.buf[i];
                     //     println!("{} - {}", c, c as char);
                     // }
-                    automatomsg::print_payload(&retmsg.payload);
+                    am::print_payload(&retmsg.payload);
                 }
                 Ok(false) => {
                     println!("here");
@@ -311,9 +311,9 @@ fn old_main() -> Result<(), Box<dyn Error>> {
 
     let PIN_LED: u8 = 26;
 
-    let onmsg = automatomsg::Msgbuf {
+    let onmsg = Msgbuf {
         payload: Payload {
-            payload_type: automatomsg::PayloadType::PtWritepin as u8, // .to_u8(),
+            payload_type: am::PayloadType::PtWritepin as u8, // .to_u8(),
             data: PayloadData {
                 pinval: Pinval {
                     pin: PIN_LED,
@@ -322,9 +322,9 @@ fn old_main() -> Result<(), Box<dyn Error>> {
             },
         },
     };
-    let offmsg = automatomsg::Msgbuf {
+    let offmsg = Msgbuf {
         payload: Payload {
-            payload_type: automatomsg::PayloadType::PtWritepin as u8,
+            payload_type: am::PayloadType::PtWritepin as u8,
             data: PayloadData {
                 pinval: Pinval {
                     pin: PIN_LED,
@@ -370,10 +370,10 @@ fn old_main() -> Result<(), Box<dyn Error>> {
 
 unsafe fn writeMessage(
     port: &mut serial::SystemPort,
-    msg: &automatomsg::Msgbuf,
+    msg: &Msgbuf,
     toid: u8,
 ) -> Result<(), serial::Error> {
-    let sz = automatomsg::payloadSize(&msg.payload);
+    let sz = am::payloadSize(&msg.payload);
 
     port.write(&['m' as u8])?;
     port.write(&[toid as u8])?;
@@ -385,7 +385,7 @@ unsafe fn writeMessage(
 
 unsafe fn readMessage(
     port: &mut serial::SystemPort,
-    msg: &mut automatomsg::Msgbuf,
+    msg: &mut Msgbuf,
     fromid: &mut u8,
 ) -> Result<bool, serial::Error> {
     let mut monobuf = [0; 1];
@@ -409,216 +409,177 @@ unsafe fn readMessage(
 }
 
 fn writeMessageFiles() -> Result<(), serial::Error> {
-    let mut mutmsg = automatomsg::Msgbuf {
+    let mut mutmsg = Msgbuf {
         payload: Payload {
-            payload_type: automatomsg::PayloadType::PtAck as u8,
+            payload_type: am::PayloadType::PtAck as u8,
             data: PayloadData { pin: 0 },
         },
     };
 
     unsafe {
-        automatomsg::setup_ack(&mut mutmsg.payload);
+        am::setup_ack(&mut mutmsg.payload);
         let mut onfile = File::create("rustmsgs-out/ack.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!("setup_ack: {}", automatomsg::payloadSize(&mutmsg.payload));
+        println!("setup_ack: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_fail(&mut mutmsg.payload, ResultCode::RcInvalidRhRouterError);
+        am::setup_fail(&mut mutmsg.payload, ResultCode::RcInvalidRhRouterError);
         let mut onfile = File::create("rustmsgs-out/fail.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!("setup_fail: {}", automatomsg::payloadSize(&mutmsg.payload));
+        println!("setup_fail: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_pinmode(&mut mutmsg.payload, 26, 2);
+        am::setup_pinmode(&mut mutmsg.payload, 26, 2);
         let mut onfile = File::create("rustmsgs-out/pinmode.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_pinmode: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_pinmode: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readpin(&mut mutmsg.payload, 22);
+        am::setup_readpin(&mut mutmsg.payload, 22);
         let mut onfile = File::create("rustmsgs-out/readpin.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readpin: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readpin: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readpinreply(&mut mutmsg.payload, 26, 1);
+        am::setup_readpinreply(&mut mutmsg.payload, 26, 1);
         let mut onfile = File::create("rustmsgs-out/readpinreply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readpinreply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readpinreply: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_writepin(&mut mutmsg.payload, 15, 1);
+        am::setup_writepin(&mut mutmsg.payload, 15, 1);
         let mut onfile = File::create("rustmsgs-out/writepin.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_writepin: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_writepin: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readanalog(&mut mutmsg.payload, 27);
+        am::setup_readanalog(&mut mutmsg.payload, 27);
         let mut onfile = File::create("rustmsgs-out/readanalog.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readanalog: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readanalog: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readanalogreply(&mut mutmsg.payload, 6, 500);
+        am::setup_readanalogreply(&mut mutmsg.payload, 6, 500);
         let mut onfile = File::create("rustmsgs-out/readanalogreply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
         println!(
             "setup_readanalogreply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
+            am::payloadSize(&mutmsg.payload)
         );
     }
 
     unsafe {
-        automatomsg::setup_readmem(&mut mutmsg.payload, 1500, 75);
+        am::setup_readmem(&mut mutmsg.payload, 1500, 75);
         let mut onfile = File::create("rustmsgs-out/readmem.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readmem: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readmem: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
         let test = [1, 2, 3, 4, 5];
-        automatomsg::setup_readmemreply(&mut mutmsg.payload, &test);
+        am::setup_readmemreply(&mut mutmsg.payload, &test);
         let mut onfile = File::create("rustmsgs-out/readmemreply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readmemreply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readmemreply: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
         let test = [5, 4, 3, 2, 1];
-        automatomsg::setup_writemem(&mut mutmsg.payload, 5678, &test);
+        am::setup_writemem(&mut mutmsg.payload, 5678, &test);
         let mut onfile = File::create("rustmsgs-out/writemem.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_writemem: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_writemem: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readinfo(&mut mutmsg.payload);
+        am::setup_readinfo(&mut mutmsg.payload);
         let mut onfile = File::create("rustmsgs-out/readinfo.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readinfo: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readinfo: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 5);
+        am::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 5);
         let mut onfile = File::create("rustmsgs-out/readinforeply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readinforeply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readinforeply: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readhumidity(&mut mutmsg.payload);
+        am::setup_readhumidity(&mut mutmsg.payload);
         let mut onfile = File::create("rustmsgs-out/readhumidity.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readhumidity: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readhumidity: {}", am::payloadSize(&mutmsg.payload));
     }
 
     unsafe {
-        automatomsg::setup_readhumidityreply(&mut mutmsg.payload, 45.7);
+        am::setup_readhumidityreply(&mut mutmsg.payload, 45.7);
         let mut onfile = File::create("rustmsgs-out/readhumidityreply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
         println!(
             "setup_readhumidityreply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
+            am::payloadSize(&mutmsg.payload)
         );
     }
 
     unsafe {
-        automatomsg::setup_readtemperature(&mut mutmsg.payload);
+        am::setup_readtemperature(&mut mutmsg.payload);
         let mut onfile = File::create("rustmsgs-out/readtemperature.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
         println!(
             "setup_readtemperature: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
+            am::payloadSize(&mutmsg.payload)
         );
     }
 
     unsafe {
-        automatomsg::setup_readtemperaturereply(&mut mutmsg.payload, 98.6);
+        am::setup_readtemperaturereply(&mut mutmsg.payload, 98.6);
         let mut onfile = File::create("rustmsgs-out/readtemperaturereply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
         println!(
             "setup_readtemperaturereply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
+            am::payloadSize(&mutmsg.payload)
         );
     }
 
     unsafe {
-        automatomsg::setup_readfield(&mut mutmsg.payload, 1);
+        am::setup_readfield(&mut mutmsg.payload, 1);
         let mut onfile = File::create("rustmsgs-out/readfield.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readfield: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readfield: {}", am::payloadSize(&mutmsg.payload));
     };
 
     unsafe {
-        automatomsg::setup_readfieldreply(&mut mutmsg.payload, 77, 20, 5, 2, "wat".as_bytes());
+        am::setup_readfieldreply(&mut mutmsg.payload, 77, 20, 5, 2, "wat".as_bytes());
         let mut onfile = File::create("rustmsgs-out/readfieldreply.bin")?;
-        onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
+        onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
-        println!(
-            "setup_readfieldreply: {}",
-            automatomsg::payloadSize(&mutmsg.payload)
-        );
+        println!("setup_readfieldreply: {}", am::payloadSize(&mutmsg.payload));
     };
 
     Ok(())
@@ -631,9 +592,9 @@ unsafe fn readMsgFile(name: &str) -> Result<(), Box<dyn Error>> {
     println!("reading: {}", name);
 
     // message with dummy payload.
-    let mut mutmsg = automatomsg::Msgbuf {
+    let mut mutmsg = Msgbuf {
         payload: Payload {
-            payload_type: automatomsg::PayloadType::PtAck as u8,
+            payload_type: am::PayloadType::PtAck as u8,
             data: PayloadData { pin: 0 },
         },
     };
@@ -644,7 +605,7 @@ unsafe fn readMsgFile(name: &str) -> Result<(), Box<dyn Error>> {
     //     let c = mutmsg.buf[i];
     //     println!("{} - {}", c, c as char);
     // }
-    automatomsg::print_payload(&mutmsg.payload);
+    am::print_payload(&mutmsg.payload);
 
     Ok(())
 }
