@@ -27,7 +27,7 @@ fn main() {
     //         }
     //     }
     // }
-    // writeMessageFiles();
+    writeMessageFiles();
 
     match err_main() {
         Ok(()) => (),
@@ -545,7 +545,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
     }
 
     unsafe {
-        automatomsg::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 7);
+        automatomsg::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 5);
         let mut onfile = File::create("rustmsgs-out/readinforeply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
@@ -611,7 +611,7 @@ fn writeMessageFiles() -> Result<(), serial::Error> {
     };
 
     unsafe {
-        automatomsg::setup_readfieldreply(&mut mutmsg.payload, 1, 20, 5, 2, "wat".as_bytes());
+        automatomsg::setup_readfieldreply(&mut mutmsg.payload, 77, 20, 5, 2, "wat".as_bytes());
         let mut onfile = File::create("rustmsgs-out/readfieldreply.bin")?;
         onfile.write(&mutmsg.buf[0..automatomsg::payloadSize(&mutmsg.payload)])?;
 
