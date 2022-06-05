@@ -49,15 +49,12 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     // set up the outgoing message.
     match matches.subcommand() {
         Some(("write", sub_matches)) => {
-            writeMessageFiles();
+            println!("writing files");
+            writeMessageFiles()?;
         }
         Some(("read", sub_matches)) => unsafe {
-            match readMessageFiles() {
-                Ok(()) => (),
-                Err(e) => {
-                    println!("error: {:?}", e)
-                }
-            }
+            println!("reading files");
+            readMessageFiles()?;
         },
         meh => {
             bail!("unhandled command! {:?}", meh)
