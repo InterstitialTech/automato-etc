@@ -271,7 +271,7 @@ fn writeMessageFiles(dir: &str) -> Result<(), serial::Error> {
     };
 
     unsafe {
-        am::setup_readfieldreply(&mut mutmsg.payload, 7, 77, 20, 2, "wat".as_bytes());
+        am::setup_readfieldreply(&mut mutmsg.payload, 7, 77, 20, 4, "wat".as_bytes());
         let mut onfile = File::create(format!("{}/readfieldreply.bin", dir).as_str())?;
         onfile.write(&mutmsg.buf[0..am::payloadSize(&mutmsg.payload)])?;
 
@@ -475,7 +475,7 @@ unsafe fn readMessageFiles(dir: &str) -> Result<bool, Box<dyn Error>> {
         || mb.payload.data.readfieldreply.offset != 77
         || mb.payload.data.readfieldreply.length != 20
     // TODO: define format codes
-        || mb.payload.data.readfieldreply.format != 2)
+        || mb.payload.data.readfieldreply.format != 4)
     {
         println!("readfieldreply msg failed");
         return Ok(false);
