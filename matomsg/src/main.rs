@@ -336,7 +336,7 @@ unsafe fn readMsgFile(name: &str) -> Result<(), Box<dyn Error>> {
     // message with dummy payload.
     let mut mutmsg = Msgbuf {
         payload: Payload {
-            payload_type: am::PayloadType::PtAck as u8,
+            payload_type: am::PayloadType::PtAck,
             data: PayloadData { pin: 0 },
         },
     };

@@ -135,7 +135,7 @@ pub union PayloadData {
 #[repr(C)]
 #[repr(packed)]
 pub struct Payload {
-    pub payload_type: u8,
+    pub payload_type: PayloadType,
     pub data: PayloadData,
 }
 
@@ -182,90 +182,84 @@ pub enum ResultCode {
 // --------------------------------------------------------
 
 pub fn payloadSize(p: &Payload) -> usize {
-    match PayloadType::from_u8(p.payload_type) {
-        Some(pt) => match pt {
-            PayloadType::PtAck => size_of::<u8>(),
-            PayloadType::PtFail => size_of::<u8>() + size_of::<u8>(),
-            PayloadType::PtPinmode => size_of::<u8>() + size_of::<Pinmode>(),
-            PayloadType::PtReadpin => size_of::<u8>() + size_of::<u8>(),
-            PayloadType::PtReadpinreply => size_of::<u8>() + size_of::<Pinval>(),
-            PayloadType::PtWritepin => size_of::<u8>() + size_of::<Pinval>(),
-            PayloadType::PtReadanalog => size_of::<u8>() + size_of::<u8>(),
-            PayloadType::PtReadanalogreply => size_of::<u8>() + size_of::<AnalogPinval>(),
-            PayloadType::PtReadmem => size_of::<u8>() + size_of::<Readmem>(),
-            PayloadType::PtReadmemreply => unsafe {
-                size_of::<u8>() + size_of::<u8>() + p.data.readmemreply.length as usize
-            },
-            PayloadType::PtWritemem => unsafe {
-                size_of::<u8>()
-                    + size_of::<u16>()
-                    + size_of::<u8>()
-                    + p.data.writemem.length as usize
-            },
-            PayloadType::PtReadinfo => size_of::<u8>(),
-            PayloadType::PtReadinforeply => size_of::<u8>() + size_of::<RemoteInfo>(),
-            PayloadType::PtReadhumidity => size_of::<u8>(),
-            PayloadType::PtReadhumidityreply => size_of::<u8>() + size_of::<f32>(),
-            PayloadType::PtReadtemperature => size_of::<u8>(),
-            PayloadType::PtReadtemperaturereply => size_of::<u8>() + size_of::<f32>(),
-            PayloadType::PtReadfield => size_of::<u8>() + size_of::<ReadField>(),
-            PayloadType::PtReadfieldreply => size_of::<u8>() + size_of::<ReadFieldReply>(),
+    match p.payload_type {
+        PayloadType::PtAck => size_of::<u8>(),
+        PayloadType::PtFail => size_of::<u8>() + size_of::<u8>(),
+        PayloadType::PtPinmode => size_of::<u8>() + size_of::<Pinmode>(),
+        PayloadType::PtReadpin => size_of::<u8>() + size_of::<u8>(),
+        PayloadType::PtReadpinreply => size_of::<u8>() + size_of::<Pinval>(),
+        PayloadType::PtWritepin => size_of::<u8>() + size_of::<Pinval>(),
+        PayloadType::PtReadanalog => size_of::<u8>() + size_of::<u8>(),
+        PayloadType::PtReadanalogreply => size_of::<u8>() + size_of::<AnalogPinval>(),
+        PayloadType::PtReadmem => size_of::<u8>() + size_of::<Readmem>(),
+        PayloadType::PtReadmemreply => unsafe {
+            size_of::<u8>() + size_of::<u8>() + p.data.readmemreply.length as usize
         },
-        None => 0,
+        PayloadType::PtWritemem => unsafe {
+            size_of::<u8>() + size_of::<u16>() + size_of::<u8>() + p.data.writemem.length as usize
+        },
+        PayloadType::PtReadinfo => size_of::<u8>(),
+        PayloadType::PtReadinforeply => size_of::<u8>() + size_of::<RemoteInfo>(),
+        PayloadType::PtReadhumidity => size_of::<u8>(),
+        PayloadType::PtReadhumidityreply => size_of::<u8>() + size_of::<f32>(),
+        PayloadType::PtReadtemperature => size_of::<u8>(),
+        PayloadType::PtReadtemperaturereply => size_of::<u8>() + size_of::<f32>(),
+        PayloadType::PtReadfield => size_of::<u8>() + size_of::<ReadField>(),
+        PayloadType::PtReadfieldreply => size_of::<u8>() + size_of::<ReadFieldReply>(),
     }
 }
 
 pub fn setup_ack(p: &mut Payload) {
-    p.payload_type = PayloadType::PtAck as u8;
+    p.payload_type = PayloadType::PtAck;
 }
 
 pub fn setup_fail(p: &mut Payload, rc: ResultCode) {
-    p.payload_type = PayloadType::PtFail as u8;
+    p.payload_type = PayloadType::PtFail;
     p.data.failcode = rc as u8;
 }
 
 pub fn setup_pinmode(p: &mut Payload, pin: u8, mode: u8) {
-    p.payload_type = PayloadType::PtPinmode as u8;
+    p.payload_type = PayloadType::PtPinmode;
     p.data.pinmode.pin = pin;
     p.data.pinmode.mode = mode;
 }
 
 pub fn setup_readpin(p: &mut Payload, pin: u8) {
-    p.payload_type = PayloadType::PtReadpin as u8;
+    p.payload_type = PayloadType::PtReadpin;
     p.data.pin = pin;
 }
 
 pub fn setup_readpinreply(p: &mut Payload, pin: u8, state: u8) {
-    p.payload_type = PayloadType::PtReadpinreply as u8;
+    p.payload_type = PayloadType::PtReadpinreply;
     p.data.pinval.pin = pin;
     p.data.pinval.state = state;
 }
 
 pub fn setup_writepin(p: &mut Payload, pin: u8, state: u8) {
-    p.payload_type = PayloadType::PtWritepin as u8;
+    p.payload_type = PayloadType::PtWritepin;
     p.data.pinval.pin = pin;
     p.data.pinval.state = state;
 }
 
 pub fn setup_readanalog(p: &mut Payload, pin: u8) {
-    p.payload_type = PayloadType::PtReadanalog as u8;
+    p.payload_type = PayloadType::PtReadanalog;
     p.data.pin = pin;
 }
 
 pub fn setup_readanalogreply(p: &mut Payload, pin: u8, state: u16) {
-    p.payload_type = PayloadType::PtReadanalogreply as u8;
+    p.payload_type = PayloadType::PtReadanalogreply;
     p.data.analogpinval.pin = pin;
     p.data.analogpinval.state = state;
 }
 
 pub fn setup_readmem(p: &mut Payload, address: u16, length: u8) {
-    p.payload_type = PayloadType::PtReadmem as u8;
+    p.payload_type = PayloadType::PtReadmem;
     p.data.readmem.address = address;
     p.data.readmem.length = length;
 }
 
 pub fn setup_readmemreply(p: &mut Payload, mem: &[u8]) -> ResultCode {
-    p.payload_type = PayloadType::PtReadmemreply as u8;
+    p.payload_type = PayloadType::PtReadmemreply;
     if mem.len() <= MAX_READMEM {
         p.data.readmemreply.length = mem.len() as u8;
         unsafe {
@@ -278,7 +272,7 @@ pub fn setup_readmemreply(p: &mut Payload, mem: &[u8]) -> ResultCode {
 }
 
 pub fn setup_writemem(p: &mut Payload, address: u16, mem: &[u8]) -> ResultCode {
-    p.payload_type = PayloadType::PtWritemem as u8;
+    p.payload_type = PayloadType::PtWritemem;
     if mem.len() <= MAX_WRITEMEM {
         p.data.writemem.address = address;
         p.data.writemem.length = mem.len() as u8;
@@ -292,7 +286,7 @@ pub fn setup_writemem(p: &mut Payload, address: u16, mem: &[u8]) -> ResultCode {
 }
 
 pub fn setup_readinfo(p: &mut Payload) {
-    p.payload_type = PayloadType::PtReadinfo as u8;
+    p.payload_type = PayloadType::PtReadinfo;
 }
 
 pub fn setup_readinforeply(
@@ -302,7 +296,7 @@ pub fn setup_readinforeply(
     datalen: u16,
     fieldcount: u16,
 ) {
-    p.payload_type = PayloadType::PtReadinforeply as u8;
+    p.payload_type = PayloadType::PtReadinforeply;
     p.data.remoteinfo.protoversion = protoversion;
     p.data.remoteinfo.macAddress = macAddress;
     p.data.remoteinfo.datalen = datalen;
@@ -310,7 +304,7 @@ pub fn setup_readinforeply(
 }
 
 pub fn setup_readfield(p: &mut Payload, index: u16) {
-    p.payload_type = PayloadType::PtReadfield as u8;
+    p.payload_type = PayloadType::PtReadfield;
     p.data.readfield.index = index;
 }
 
@@ -322,7 +316,7 @@ pub fn setup_readfieldreply(
     format: u8,
     name: &[u8],
 ) {
-    p.payload_type = PayloadType::PtReadfieldreply as u8;
+    p.payload_type = PayloadType::PtReadfieldreply;
     p.data.readfieldreply.index = index;
     p.data.readfieldreply.offset = offset;
     p.data.readfieldreply.length = length;
@@ -333,134 +327,128 @@ pub fn setup_readfieldreply(
 }
 
 pub fn setup_readhumidity(p: &mut Payload) {
-    p.payload_type = PayloadType::PtReadhumidity as u8;
+    p.payload_type = PayloadType::PtReadhumidity;
 }
 
 pub fn setup_readhumidityreply(p: &mut Payload, humidity: f32) {
-    p.payload_type = PayloadType::PtReadhumidityreply as u8;
+    p.payload_type = PayloadType::PtReadhumidityreply;
     p.data.f = humidity;
 }
 
 pub fn setup_readtemperature(p: &mut Payload) {
-    p.payload_type = PayloadType::PtReadtemperature as u8;
+    p.payload_type = PayloadType::PtReadtemperature;
 }
 
 pub fn setup_readtemperaturereply(p: &mut Payload, temperature: f32) {
-    p.payload_type = PayloadType::PtReadtemperaturereply as u8;
+    p.payload_type = PayloadType::PtReadtemperaturereply;
     p.data.f = temperature;
 }
 
 pub unsafe fn print_payload(p: &Payload) {
     println!("message payload");
 
-    match PayloadType::from_u8(p.payload_type) {
-        None => println!("invalid type: {}", p.payload_type),
-
-        Some(pt) => {
-            match pt {
-                PayloadType::PtAck => {
-                    println!("PtAck");
-                }
-                PayloadType::PtFail => {
-                    println!("PtFail; ");
-                    println!("code: {}", { p.data.failcode });
-                    // println!(resultString((ResultCode)p.data.failcode));
-                }
-                PayloadType::PtPinmode => {
-                    println!("PtPinmode");
-                    println!("pin: {}", { p.data.pinmode.pin });
-                    println!("mode: {}", { p.data.pinmode.mode });
-                }
-                PayloadType::PtReadpin => {
-                    println!("PtReadpin");
-                    println!("pin: {}", { p.data.pin });
-                }
-                PayloadType::PtReadpinreply => {
-                    println!("PtReadpinreply");
-                    println!("pin: {}", { p.data.pinval.pin });
-                    println!("state: {}", { p.data.pinval.state });
-                }
-                PayloadType::PtWritepin => {
-                    println!("PtWritepin");
-                    println!("pin: {}", { p.data.pinval.pin });
-                    println!("state: {}", { p.data.pinval.state });
-                }
-                PayloadType::PtReadanalog => {
-                    println!("PtReadanalog");
-                    println!("pin: {}", { p.data.pin });
-                }
-                PayloadType::PtReadanalogreply => {
-                    println!("PtReadanalogreply");
-                    println!("pin: {}", { p.data.pin });
-                    println!("state: {}", { p.data.analogpinval.state });
-                }
-                PayloadType::PtReadmem => {
-                    println!("PtReadmem");
-                    println!("address{}", { p.data.readmem.address });
-                    println!("length{}", { p.data.readmem.length });
-                }
-                PayloadType::PtReadmemreply => {
-                    println!("PtReadmemreply");
-                    println!("length: {}", { p.data.readmemreply.length });
-                    println!("values");
-                    println!("offset: decimal, hex ");
-                    for i in 0..p.data.readmemreply.length as usize {
-                        let c = p.data.readmemreply.data[i];
-                        println!("{}: {}, {:#X}", i, c, c);
-                    }
-                }
-                PayloadType::PtWritemem => {
-                    println!("PtWritemem");
-                    println!("address {}", { p.data.writemem.address });
-                    println!("length {}", { p.data.writemem.length });
-                    println!("offset: decimal, hex ");
-                    for i in 0..p.data.writemem.length as usize {
-                        let c = p.data.writemem.data[i];
-                        println!("{}: {}, {:#X}", i, c, c);
-                    }
-                }
-                PayloadType::PtReadinfo => {
-                    println!("PtReadinfo");
-                }
-                PayloadType::PtReadinforeply => {
-                    println!("PtReadinforeply");
-                    println!("protoversion:{}", { p.data.remoteinfo.protoversion });
-                    println!("macAddress:{}", { p.data.remoteinfo.macAddress });
-                    println!("datalen:{}", { p.data.remoteinfo.datalen });
-                    println!("fieldcount:{}", { p.data.remoteinfo.fieldcount });
-                }
-                PayloadType::PtReadhumidity => {
-                    println!("PtReadhumidity");
-                }
-                PayloadType::PtReadhumidityreply => {
-                    println!("PtReadhumidityreply");
-                    println!("humidity:{}", { p.data.f });
-                }
-                PayloadType::PtReadtemperature => {
-                    println!("PtReadtemperature");
-                }
-                PayloadType::PtReadtemperaturereply => {
-                    println!("PtReadtemperaturereply");
-                    println!("temperature:{}", { p.data.f });
-                }
-
-                PayloadType::PtReadfield => {
-                    println!("PtReadfieldreply");
-                    println!("index: {}", p.data.readfieldreply.index);
-                }
-                PayloadType::PtReadfieldreply => {
-                    println!("PtReadfieldreply");
-                    println!("index: {}", p.data.readfieldreply.index);
-                    println!("offset: {}", p.data.readfieldreply.offset);
-                    println!("length: {}", p.data.readfieldreply.length);
-                    println!("format: {}", p.data.readfieldreply.format);
-                    print!("name: ");
-                    for i in 0..p.data.readfieldreply.name.len() {
-                        print!("{}", p.data.readfieldreply.name[i] as char);
-                    }
-                    println!("");
-                }
+    match p.payload_type {
+        PayloadType::PtAck => {
+            println!("PtAck");
+        }
+        PayloadType::PtFail => {
+            println!("PtFail; ");
+            println!("code: {}", { p.data.failcode });
+            // println!(resultString((ResultCode)p.data.failcode));
+        }
+        PayloadType::PtPinmode => {
+            println!("PtPinmode");
+            println!("pin: {}", { p.data.pinmode.pin });
+            println!("mode: {}", { p.data.pinmode.mode });
+        }
+        PayloadType::PtReadpin => {
+            println!("PtReadpin");
+            println!("pin: {}", { p.data.pin });
+        }
+        PayloadType::PtReadpinreply => {
+            println!("PtReadpinreply");
+            println!("pin: {}", { p.data.pinval.pin });
+            println!("state: {}", { p.data.pinval.state });
+        }
+        PayloadType::PtWritepin => {
+            println!("PtWritepin");
+            println!("pin: {}", { p.data.pinval.pin });
+            println!("state: {}", { p.data.pinval.state });
+        }
+        PayloadType::PtReadanalog => {
+            println!("PtReadanalog");
+            println!("pin: {}", { p.data.pin });
+        }
+        PayloadType::PtReadanalogreply => {
+            println!("PtReadanalogreply");
+            println!("pin: {}", { p.data.pin });
+            println!("state: {}", { p.data.analogpinval.state });
+        }
+        PayloadType::PtReadmem => {
+            println!("PtReadmem");
+            println!("address{}", { p.data.readmem.address });
+            println!("length{}", { p.data.readmem.length });
+        }
+        PayloadType::PtReadmemreply => {
+            println!("PtReadmemreply");
+            println!("length: {}", { p.data.readmemreply.length });
+            println!("values");
+            println!("offset: decimal, hex ");
+            for i in 0..p.data.readmemreply.length as usize {
+                let c = p.data.readmemreply.data[i];
+                println!("{}: {}, {:#X}", i, c, c);
             }
+        }
+        PayloadType::PtWritemem => {
+            println!("PtWritemem");
+            println!("address {}", { p.data.writemem.address });
+            println!("length {}", { p.data.writemem.length });
+            println!("offset: decimal, hex ");
+            for i in 0..p.data.writemem.length as usize {
+                let c = p.data.writemem.data[i];
+                println!("{}: {}, {:#X}", i, c, c);
+            }
+        }
+        PayloadType::PtReadinfo => {
+            println!("PtReadinfo");
+        }
+        PayloadType::PtReadinforeply => {
+            println!("PtReadinforeply");
+            println!("protoversion:{}", { p.data.remoteinfo.protoversion });
+            println!("macAddress:{}", { p.data.remoteinfo.macAddress });
+            println!("datalen:{}", { p.data.remoteinfo.datalen });
+            println!("fieldcount:{}", { p.data.remoteinfo.fieldcount });
+        }
+        PayloadType::PtReadhumidity => {
+            println!("PtReadhumidity");
+        }
+        PayloadType::PtReadhumidityreply => {
+            println!("PtReadhumidityreply");
+            println!("humidity:{}", { p.data.f });
+        }
+        PayloadType::PtReadtemperature => {
+            println!("PtReadtemperature");
+        }
+        PayloadType::PtReadtemperaturereply => {
+            println!("PtReadtemperaturereply");
+            println!("temperature:{}", { p.data.f });
+        }
+
+        PayloadType::PtReadfield => {
+            println!("PtReadfieldreply");
+            println!("index: {}", p.data.readfieldreply.index);
+        }
+        PayloadType::PtReadfieldreply => {
+            println!("PtReadfieldreply");
+            println!("index: {}", p.data.readfieldreply.index);
+            println!("offset: {}", p.data.readfieldreply.offset);
+            println!("length: {}", p.data.readfieldreply.length);
+            println!("format: {}", p.data.readfieldreply.format);
+            print!("name: ");
+            for i in 0..p.data.readfieldreply.name.len() {
+                print!("{}", p.data.readfieldreply.name[i] as char);
+            }
+            println!("");
         }
     }
 }
