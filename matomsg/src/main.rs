@@ -1,18 +1,9 @@
 use automato::automatomsg as am;
-use automato::automatomsg::{
-    AnalogPinval, Message, Msgbuf, Payload, PayloadData, PayloadType, Pinmode, Pinval, Readmem,
-    ReadmemReply, RemoteInfo, ResultCode, Writemem,
-};
-use clap::{Arg, Command, SubCommand};
-use num_derive;
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use automato::automatomsg::Msgbuf;
+use clap::{Arg, Command};
 use simple_error::bail;
 use std::error::Error;
-use std::fs::File;
 use std::io::{Read, Write};
-use std::mem::size_of;
-use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -28,12 +19,12 @@ fn main() {
 }
 
 fn err_main() -> Result<(), Box<dyn Error>> {
-    let matches = clap::App::new("matomsg")
+    let matches = clap::Command::new("matomsg")
         .version("1.0")
         .author("Automato Enterprises")
         .about("cli for testing automato messsages over serial.")
         .arg(
-            Arg::with_name("port")
+            Arg::new("port")
                 .short('p')
                 .long("port")
                 .value_name("FILE")
@@ -42,7 +33,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("baud")
+            Arg::new("baud")
                 .short('b')
                 .long("baud")
                 .value_name("NUMBER")
@@ -53,7 +44,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("address")
+            Arg::new("address")
                 .short('a')
                 .long("address")
                 .value_name("0-255")
@@ -65,32 +56,24 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         .subcommand(
             Command::new("writepin")
                 .about("write 0 or 1 to pin")
-                .arg(Arg::with_name("pin").value_name("PIN").takes_value(true))
-                .arg(
-                    Arg::with_name("value")
-                        .value_name("1 or 0")
-                        .takes_value(true),
-                ),
+                .arg(Arg::new("pin").value_name("PIN").takes_value(true))
+                .arg(Arg::new("value").value_name("1 or 0").takes_value(true)),
         )
         .subcommand(
             Command::new("pinmode")
                 .about("write 0 or 1 to pin")
-                .arg(Arg::with_name("pin").value_name("PIN").takes_value(true))
-                .arg(
-                    Arg::with_name("value")
-                        .value_name("1 or 0")
-                        .takes_value(true),
-                ),
+                .arg(Arg::new("pin").value_name("PIN").takes_value(true))
+                .arg(Arg::new("value").value_name("1 or 0").takes_value(true)),
         )
         .subcommand(
             Command::new("readpin")
                 .about("query pin")
-                .arg(Arg::with_name("pin").value_name("PIN").takes_value(true)),
+                .arg(Arg::new("pin").value_name("PIN").takes_value(true)),
         )
         .subcommand(
             Command::new("readanalog")
                 .about("query pin")
-                .arg(Arg::with_name("pin").value_name("PIN").takes_value(true)),
+                .arg(Arg::new("pin").value_name("PIN").takes_value(true)),
         )
         .subcommand(Command::new("readinfo").about("read automato general info"))
         .subcommand(Command::new("readhumidity").about("read automato humidity"))
@@ -98,39 +81,19 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         .subcommand(
             Command::new("writemem")
                 .about("write hex data to automato memory")
-                .arg(
-                    Arg::with_name("address")
-                        .value_name("NUMBER")
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("value")
-                        .value_name("hex string")
-                        .takes_value(true),
-                ),
+                .arg(Arg::new("address").value_name("NUMBER").takes_value(true))
+                .arg(Arg::new("value").value_name("hex string").takes_value(true)),
         )
         .subcommand(
             Command::new("readmem")
                 .about("read hex data from automato memory")
-                .arg(
-                    Arg::with_name("address")
-                        .value_name("NUMBER")
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("length")
-                        .value_name("NUMBER")
-                        .takes_value(true),
-                ),
+                .arg(Arg::new("address").value_name("NUMBER").takes_value(true))
+                .arg(Arg::new("length").value_name("NUMBER").takes_value(true)),
         )
         .subcommand(
             Command::new("readfield")
                 .about("read field info from automato memory map")
-                .arg(
-                    Arg::with_name("index")
-                        .value_name("NUMBER")
-                        .takes_value(true),
-                ),
+                .arg(Arg::new("index").value_name("NUMBER").takes_value(true)),
         )
         .get_matches();
 
@@ -185,13 +148,13 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             };
             unsafe { am::setup_readanalog(&mut mb.payload, pin) };
         }
-        Some(("readinfo", sub_matches)) => {
+        Some(("readinfo", _sub_matches)) => {
             unsafe { am::setup_readinfo(&mut mb.payload) };
         }
-        Some(("readhumidity", sub_matches)) => {
+        Some(("readhumidity", _sub_matches)) => {
             unsafe { am::setup_readhumidity(&mut mb.payload) };
         }
-        Some(("readtemperature", sub_matches)) => {
+        Some(("readtemperature", _sub_matches)) => {
             unsafe { am::setup_readtemperature(&mut mb.payload) };
         }
         Some(("writemem", sub_matches)) => {
@@ -238,15 +201,15 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     };
     port.configure(&ps)?;
 
-    let readReply = true;
+    let read_reply = true;
     unsafe {
-        writeMessage(&mut port, &mb, automatoaddr)?;
+        write_message(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
         sleep(Duration::from_millis(420));
 
-        if readReply {
-            match readMessage(&mut port, &mut retmsg, &mut fromid) {
+        if read_reply {
+            match read_message(&mut port, &mut retmsg, &mut fromid) {
                 Ok(true) => {
                     println!("reply from: {}", fromid);
                     // for i in 0..retmsg.buf.len() {
@@ -287,12 +250,12 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-unsafe fn writeMessage(
+unsafe fn write_message(
     port: &mut serial::SystemPort,
     msg: &Msgbuf,
     toid: u8,
 ) -> Result<(), serial::Error> {
-    let sz = am::payloadSize(&msg.payload);
+    let sz = am::payload_size(&msg.payload);
 
     port.write(&['m' as u8])?;
     port.write(&[toid as u8])?;
@@ -302,7 +265,7 @@ unsafe fn writeMessage(
     Ok(())
 }
 
-unsafe fn readMessage(
+unsafe fn read_message(
     port: &mut serial::SystemPort,
     msg: &mut Msgbuf,
     fromid: &mut u8,
@@ -320,34 +283,9 @@ unsafe fn readMessage(
     port.read_exact(&mut monobuf)?;
     let sz = monobuf[0] as usize;
 
-    if (sz > 0) {
+    if sz > 0 {
         port.read_exact(&mut msg.buf[0..sz])?;
     }
 
     Ok(true)
-}
-
-unsafe fn readMsgFile(name: &str) -> Result<(), Box<dyn Error>> {
-    let mut mfile = File::open(name)?;
-
-    println!("");
-    println!("reading: {}", name);
-
-    // message with dummy payload.
-    let mut mutmsg = Msgbuf {
-        payload: Payload {
-            payload_type: am::PayloadType::PtAck,
-            data: PayloadData { pin: 0 },
-        },
-    };
-
-    mfile.read(&mut mutmsg.buf);
-
-    // for i in 0..mutmsg.buf.len() {
-    //     let c = mutmsg.buf[i];
-    //     println!("{} - {}", c, c as char);
-    // }
-    am::print_payload(&mutmsg.payload);
-
-    Ok(())
 }

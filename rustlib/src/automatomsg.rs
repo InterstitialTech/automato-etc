@@ -1,5 +1,4 @@
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
@@ -34,7 +33,7 @@ pub enum PayloadType {
 #[repr(packed)]
 pub struct RemoteInfo {
     pub protoversion: f32,
-    pub macAddress: u64,
+    pub mac_address: u64,
     pub datalen: u16,
     pub fieldcount: u16,
 }
@@ -181,7 +180,7 @@ pub enum ResultCode {
 // message fns.
 // --------------------------------------------------------
 
-pub fn payloadSize(p: &Payload) -> usize {
+pub fn payload_size(p: &Payload) -> usize {
     match p.payload_type {
         PayloadType::PtAck => size_of::<u8>(),
         PayloadType::PtFail => size_of::<u8>() + size_of::<u8>(),
@@ -292,13 +291,13 @@ pub fn setup_readinfo(p: &mut Payload) {
 pub fn setup_readinforeply(
     p: &mut Payload,
     protoversion: f32,
-    macAddress: u64,
+    mac_address: u64,
     datalen: u16,
     fieldcount: u16,
 ) {
     p.payload_type = PayloadType::PtReadinforeply;
     p.data.remoteinfo.protoversion = protoversion;
-    p.data.remoteinfo.macAddress = macAddress;
+    p.data.remoteinfo.mac_address = mac_address;
     p.data.remoteinfo.datalen = datalen;
     p.data.remoteinfo.fieldcount = fieldcount;
 }
@@ -415,7 +414,7 @@ pub unsafe fn print_payload(p: &Payload) {
         PayloadType::PtReadinforeply => {
             println!("PtReadinforeply");
             println!("protoversion:{}", { p.data.remoteinfo.protoversion });
-            println!("macAddress:{}", { p.data.remoteinfo.macAddress });
+            println!("macAddress:{}", { p.data.remoteinfo.mac_address });
             println!("datalen:{}", { p.data.remoteinfo.datalen });
             println!("fieldcount:{}", { p.data.remoteinfo.fieldcount });
         }
@@ -436,12 +435,12 @@ pub unsafe fn print_payload(p: &Payload) {
 
         PayloadType::PtReadfield => {
             println!("PtReadfieldreply");
-            println!("index: {}", p.data.readfieldreply.index);
+            println!("index: {}", { p.data.readfieldreply.index });
         }
         PayloadType::PtReadfieldreply => {
             println!("PtReadfieldreply");
-            println!("index: {}", p.data.readfieldreply.index);
-            println!("offset: {}", p.data.readfieldreply.offset);
+            println!("index: {}", { p.data.readfieldreply.index });
+            println!("offset: {}", { p.data.readfieldreply.offset });
             println!("length: {}", p.data.readfieldreply.length);
             println!("format: {}", p.data.readfieldreply.format);
             print!("name: ");
