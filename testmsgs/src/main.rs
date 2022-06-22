@@ -404,17 +404,6 @@ unsafe fn readMessageFiles(dir: &str) -> Result<bool, Box<dyn Error>> {
 
     readMsgFile(format!("{}/readinforeply.bin", dir).as_str(), &mut mb)?;
 
-    println!(
-        "wat: {}",
-        mb.payload.payload_type != PayloadType::PtReadinforeply
-    );
-    println!(
-        "wat: {}",
-        (mb.payload.data.remoteinfo.protoversion - 1.1) > 0.00000001
-    );
-    println!("wat: {}", mb.payload.data.remoteinfo.macAddress != 5678);
-    println!("wat: {}", mb.payload.data.remoteinfo.datalen != 5000);
-    println!("wat: {}", mb.payload.data.remoteinfo.fieldcount != 5);
     if (mb.payload.payload_type != PayloadType::PtReadinforeply
         || (mb.payload.data.remoteinfo.protoversion - 1.1) > 0.00000001
         || mb.payload.data.remoteinfo.macAddress != 5678
