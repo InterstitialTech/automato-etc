@@ -15,7 +15,15 @@ struct ServerData {
   float humidity;
 };
 
-Automato automato(1, NULL, 0, true);
+ServerData serverdata;
+
+MapField memoryMap[] = 
+  { map_field(ServerData, name, ff_char)
+  , map_field(ServerData, targettemp, ff_float)
+  }; 
+
+
+Automato automato(1, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 2, true);
 
 // the automato we're going to control remotely.
 uint8_t serveraddr(2);
@@ -38,13 +46,7 @@ void setup()
 
   Serial.begin(115200);
 
-  Serial.println("automato remote control client");
-
   automato.init(915.0, 20);
-
-  // print my mac id.
-  Serial.print("my mac address:");
-  Serial.println(Automato::macAddress());
 
   on = true;
 
