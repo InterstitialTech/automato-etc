@@ -46,13 +46,7 @@ void setup()
 
   Serial.begin(115200);
 
-  // Serial.println("automato remote control client");
-
   automato.init(915.0, 20);
-
-  // print my mac id.
-  // Serial.print("my mac address:");
-  // Serial.println(Automato::macAddress());
 
   on = true;
 
