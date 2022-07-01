@@ -1,6 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
@@ -79,7 +78,7 @@ const MAX_WRITEMEM: usize = 247;
 // #define MAX_READMEM RH_RF95_MAX_MESSAGE_LEN - sizeof(u8) - sizeof(u8)
 const MAX_READMEM: usize = 249;
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadmemReply {
@@ -87,7 +86,7 @@ pub struct ReadmemReply {
     pub data: [u8; MAX_READMEM],
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Writemem {
@@ -114,7 +113,7 @@ pub struct ReadFieldReply {
     pub name: [u8; 25],
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 #[repr(packed)]
 pub union PayloadData {
@@ -132,7 +131,7 @@ pub union PayloadData {
     pub f: f32,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Payload {
@@ -149,7 +148,7 @@ pub struct Message {
     pub data: Payload,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 #[repr(packed)]
 pub union Msgbuf {
