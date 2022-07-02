@@ -14,7 +14,7 @@ pub fn public_interface(
     match msg.what.as_str() {
         "GetAutomatoList" => Ok(ServerResponse {
             what: "automatos".to_string(),
-            content: serde_json::to_value(config.automato_ids)?,
+            content: serde_json::to_value(config.automato_ids.clone())?,
         }),
         "GetAutomatoDetail" => {
             let msgdata = Option::ok_or(msg.data.as_ref(), "malformed json data")?;

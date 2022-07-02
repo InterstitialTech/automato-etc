@@ -29,7 +29,7 @@ pub enum PayloadType {
     PtReadfieldreply = 18,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct RemoteInfo {
@@ -39,7 +39,7 @@ pub struct RemoteInfo {
     pub fieldcount: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinval {
@@ -47,7 +47,7 @@ pub struct Pinval {
     pub state: u8,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct AnalogPinval {
@@ -55,7 +55,7 @@ pub struct AnalogPinval {
     pub state: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinmode {
@@ -63,7 +63,7 @@ pub struct Pinmode {
     pub mode: u8,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Readmem {
@@ -95,14 +95,14 @@ pub struct Writemem {
     pub data: [u8; MAX_WRITEMEM],
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadField {
     pub index: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadFieldReply {
@@ -156,7 +156,7 @@ pub union Msgbuf {
     pub payload: Payload,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize, Debug)]
 #[repr(u8)]
 pub enum ResultCode {
     RcOk,
