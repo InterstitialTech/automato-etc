@@ -52,6 +52,12 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .required(true)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("json")
+                .long("json")
+                .help("write message output in json format")
+                .takes_value(false),
+        )
         .subcommand_required(true)
         .subcommand(
             Command::new("writepin")
@@ -109,6 +115,13 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         }
         _ => bail!("arg failure"),
     };
+
+    let json = match matches.occurrences_of("json") {
+        0 => false,
+        _ => true,
+    };
+
+    println!("json: {:?}", json);
 
     let mut mb = Msgbuf {
         buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],

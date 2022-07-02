@@ -1,10 +1,11 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use serde::{Deserialize, Serialize};
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
 // --------------------------------------------------------
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum PayloadType {
     PtAck = 0,
@@ -28,7 +29,7 @@ pub enum PayloadType {
     PtReadfieldreply = 18,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct RemoteInfo {
@@ -38,7 +39,7 @@ pub struct RemoteInfo {
     pub fieldcount: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinval {
@@ -46,7 +47,7 @@ pub struct Pinval {
     pub state: u8,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct AnalogPinval {
@@ -54,7 +55,7 @@ pub struct AnalogPinval {
     pub state: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinmode {
@@ -62,7 +63,7 @@ pub struct Pinmode {
     pub mode: u8,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Readmem {
@@ -94,14 +95,14 @@ pub struct Writemem {
     pub data: [u8; MAX_WRITEMEM],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadField {
     pub index: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadFieldReply {
@@ -155,7 +156,7 @@ pub union Msgbuf {
     pub payload: Payload,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ResultCode {
     RcOk,
