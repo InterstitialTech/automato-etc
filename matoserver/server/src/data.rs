@@ -1,8 +1,5 @@
 use automato::automatomsg as am;
-use automato::automatomsg::Msgbuf;
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
 
 // -------------------------------------------------
 

@@ -3,10 +3,9 @@ mod data;
 mod interfaces;
 mod messages;
 mod util;
-use actix_session::{CookieSession, Session};
+use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
-use chrono;
-use clap::Arg;
+// use clap::Arg;
 use config::Config;
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
@@ -17,8 +16,6 @@ use std::env;
 use std::error::Error;
 use std::path::PathBuf;
 use std::str::FromStr;
-// use timer;
-use uuid::Uuid;
 /*
 use actix_files::NamedFile;
 
@@ -35,7 +32,7 @@ fn sitemap(_req: &HttpRequest) -> Result<NamedFile> {
 */
 
 // simple index handler
-fn mainpage(session: Session, data: web::Data<Config>, req: HttpRequest) -> HttpResponse {
+fn mainpage(_session: Session, data: web::Data<Config>, req: HttpRequest) -> HttpResponse {
     info!("remote ip: {:?}, request:{:?}", req.connection_info(), req);
 
     // logged in?
@@ -118,7 +115,7 @@ fn main() {
 
 #[actix_web::main]
 async fn err_main() -> Result<(), Box<dyn Error>> {
-    let matches = clap::App::new("matoserver")
+    let _matches = clap::App::new("matoserver")
         .version("1.0")
         .author("Ben Burdette")
         .about("web server for automato")
