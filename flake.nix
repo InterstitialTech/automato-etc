@@ -18,6 +18,8 @@
               cargo
               cargo-watch
               rustc
+              openssl.dev
+              pkgconfig
             ];
           };
         }
