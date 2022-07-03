@@ -1471,6 +1471,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
+name = "matoserver"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-files",
+ "actix-session",
+ "actix-web",
+ "automato",
+ "barrel",
+ "base64 0.2.1",
+ "chrono",
+ "clap",
+ "crypto-hash",
+ "either",
+ "env_logger",
+ "futures 0.1.31",
+ "json",
+ "lettre",
+ "lettre_email",
+ "log",
+ "rand 0.5.6",
+ "rusqlite",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "simple-error",
+ "time 0.1.44",
+ "timer",
+ "toml",
+ "uuid 0.8.2",
+]
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2495,39 +2528,6 @@ dependencies = [
  "quote",
  "standback",
  "syn",
-]
-
-[[package]]
-name = "timeclonk-server"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-files",
- "actix-session",
- "actix-web",
- "automato",
- "barrel",
- "base64 0.2.1",
- "chrono",
- "clap",
- "crypto-hash",
- "either",
- "env_logger",
- "futures 0.1.31",
- "json",
- "lettre",
- "lettre_email",
- "log",
- "rand 0.5.6",
- "rusqlite",
- "serde",
- "serde_derive",
- "serde_json",
- "simple-error",
- "time 0.1.44",
- "timer",
- "toml",
- "uuid 0.8.2",
 ]
 
 [[package]]

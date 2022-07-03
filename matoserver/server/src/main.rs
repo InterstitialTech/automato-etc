@@ -1,3 +1,4 @@
+use clap::Arg;
 mod config;
 mod data;
 mod interfaces;
@@ -5,17 +6,15 @@ mod messages;
 mod util;
 use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
-// use clap::Arg;
 use config::Config;
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
-// use orgauth::data::WhatMessage;
-// use orgauth::endpoints::Callbacks;
 use serde_json;
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
 use std::str::FromStr;
+
 /*
 use actix_files::NamedFile;
 
@@ -34,12 +33,6 @@ fn sitemap(_req: &HttpRequest) -> Result<NamedFile> {
 // simple index handler
 fn mainpage(_session: Session, data: web::Data<Config>, req: HttpRequest) -> HttpResponse {
     info!("remote ip: {:?}, request:{:?}", req.connection_info(), req);
-
-    // logged in?
-    // let logindata = match interfaces::login_data_for_token(session, &data) {
-    //     Ok(Some(logindata)) => serde_json::to_value(logindata).unwrap_or(serde_json::Value::Null),
-    //     _ => serde_json::Value::Null,
-    // };
 
     let mut staticpath = data.static_path.clone().unwrap_or(PathBuf::from("static/"));
     staticpath.push("index.html");
@@ -115,51 +108,76 @@ fn main() {
 
 #[actix_web::main]
 async fn err_main() -> Result<(), Box<dyn Error>> {
-    let _matches = clap::App::new("matoserver")
+    let matches = clap::App::new("matoserver")
         .version("1.0")
         .author("Ben Burdette")
         .about("web server for automato")
         // .arg(
-        //     Arg::with_name("export")
-        //         .short("e")
-        //         .long("export")
+        //     Arg::with_name("config")
+        //         .short("c")
+        //         .long("config")
         //         .value_name("FILE")
-        //         .help("Export database to json")
+        //         .help("Specify config file")
         //         .takes_value(true),
         // )
+        .arg(
+            Arg::with_name("writeconfig")
+                .short("w")
+                .long("writeconfig")
+                .value_name("FILE")
+                .help("Write default config file")
+                .takes_value(true),
+        )
         .get_matches();
 
-    // normal server ops
-    env_logger::init();
+    match matches.value_of("writeconfig") {
+        Some(exportfile) => {
+            // do that exporting...
+            let config = defcon();
 
-    info!("server init!");
+            util::write_string(exportfile, toml::to_string_pretty(&config)?.as_str())?;
 
-    let mut config = load_config();
+            // util::write_string(
+            //   exportfile,
+            //   serde_json::to_string_pretty(&sqldata::export_db(config.db.as_path())?)?.as_str(),
+            // )?;
 
-    if config.static_path == None {
-        for (key, value) in env::vars() {
-            if key == "MATOSERVER_STATIC_PATH" {
-                config.static_path = PathBuf::from_str(value.as_str()).ok();
+            Ok(())
+        }
+        None => {
+            // normal server ops
+            env_logger::init();
+
+            info!("server init!");
+
+            let mut config = load_config();
+
+            if config.static_path == None {
+                for (key, value) in env::vars() {
+                    if key == "MATOSERVER_STATIC_PATH" {
+                        config.static_path = PathBuf::from_str(value.as_str()).ok();
+                    }
+                }
             }
+
+            info!("config: {:?}", config);
+
+            let c = config.clone();
+
+            HttpServer::new(move || {
+                let staticpath = c.static_path.clone().unwrap_or(PathBuf::from("static/"));
+                App::new()
+                    .data(c.clone()) // <- create app with shared state
+                    .wrap(middleware::Logger::default())
+                    .service(web::resource("/public").route(web::post().to(public)))
+                    .service(actix_files::Files::new("/static/", staticpath))
+                    .service(web::resource("/{tail:.*}").route(web::get().to(mainpage)))
+            })
+            .bind(format!("{}:{}", config.ip, config.port))?
+            .run()
+            .await?;
+
+            Ok(())
         }
     }
-
-    info!("config: {:?}", config);
-
-    let c = config.clone();
-
-    HttpServer::new(move || {
-        let staticpath = c.static_path.clone().unwrap_or(PathBuf::from("static/"));
-        App::new()
-            .data(c.clone()) // <- create app with shared state
-            .wrap(middleware::Logger::default())
-            .service(web::resource("/public").route(web::post().to(public)))
-            .service(actix_files::Files::new("/static/", staticpath))
-            .service(web::resource("/{tail:.*}").route(web::get().to(mainpage)))
-    })
-    .bind(format!("{}:{}", config.ip, config.port))?
-    .run()
-    .await?;
-
-    Ok(())
 }

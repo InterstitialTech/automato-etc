@@ -16,17 +16,9 @@ type SendMsg
     | GetAutomatoInfo Data.AutomatoId
 
 
-
--- | GetAutomatoDetail Int
-
-
 type ServerResponse
     = ServerError String
     | AutomatoList (List Data.ListAutomato)
-
-
-
--- | AutomatoDetail Data.ListAutomato
 
 
 showServerResponse : ServerResponse -> String
@@ -64,8 +56,10 @@ serverResponseDecoder =
                     "server error" ->
                         JD.map ServerError (JD.at [ "content" ] JD.string)
 
-                    "projecttime" ->
-                        JD.map AutomatoList (JD.at [ "content" ] (JD.list Data.decodeListAutomato))
+                    "automatos" ->
+                        JD.at [ "content" ] (JD.list JD.int)
+                            |> JD.map (List.map (\id -> { id = Data.makeAutomatoId id }))
+                            |> JD.map AutomatoList
 
                     wat ->
                         JD.succeed

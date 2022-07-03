@@ -1,4 +1,4 @@
-module TcCommon exposing (..)
+module MsCommon exposing (..)
 
 import Data as D
 import Element as E exposing (Element)

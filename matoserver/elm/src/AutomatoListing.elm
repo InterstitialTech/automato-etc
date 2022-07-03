@@ -1,7 +1,5 @@
 module AutomatoListing exposing (..)
 
--- import Dialog as D
-
 import Common
 import Data
 import Element as E exposing (Element)
@@ -10,9 +8,9 @@ import Element.Border as EBd
 import Element.Font as EF
 import Element.Input as EI
 import Element.Region
+import MsCommon as MC
 import Route
 import TangoColors as TC
-import TcCommon as TC
 import Toop
 import Util
 import WindowKeys as WK
@@ -48,7 +46,16 @@ view size model =
         titlemaxconst =
             85
     in
-    E.none
+    E.column [] <|
+        [ E.text "automatos:" ]
+            ++ List.map
+                (\la ->
+                    E.link MC.myLinkStyle
+                        { url = Route.AutomatoViewR (Data.getAutomatoIdVal la.id) |> Route.routeUrl
+                        , label = E.text <| String.fromInt (Data.getAutomatoIdVal la.id)
+                        }
+                )
+                model.automatos
 
 
 update : Msg -> Model -> ( Model, Command )

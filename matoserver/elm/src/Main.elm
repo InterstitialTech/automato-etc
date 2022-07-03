@@ -92,7 +92,6 @@ type
 type alias Flags =
     { location : String
     , useragent : String
-    , appname : String
     , width : Int
     , height : Int
     }
@@ -297,7 +296,7 @@ piview pimodel =
             view model
 
         PreInit model ->
-            { title = model.flags.appname ++ ": initializing"
+            { title = "initializing"
             , body = []
             }
 
@@ -646,7 +645,7 @@ init flags url key zone fontsize =
                 PubShowMessage { message = "loading..." } Nothing
             , size = { width = flags.width, height = flags.height }
             , location = flags.location
-            , appname = flags.appname
+            , appname = "matoserver"
             , navkey = key
             , timezone = zone
             , savedRoute = { route = Top, save = False }
