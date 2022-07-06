@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use serde::ser::{SerializeSeq, SerializeTuple, Serializer};
 use serde::{Deserialize, Serialize};
 use std::mem::size_of;
 // --------------------------------------------------------
@@ -84,6 +85,19 @@ const MAX_READMEM: usize = 249;
 pub struct ReadmemReply {
     pub length: u8,
     pub data: [u8; MAX_READMEM],
+}
+
+impl Serialize for ReadmemReply {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.length as usize))?;
+        for d in self.data {
+            seq.serialize_element(&d)?;
+        }
+        seq.end()
+    }
 }
 
 #[derive(Clone, Copy)]
