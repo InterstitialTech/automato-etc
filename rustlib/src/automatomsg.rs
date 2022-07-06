@@ -145,23 +145,22 @@ pub struct Writemem {
     pub data: [u8; MAX_WRITEMEM],
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct WriteMem {
+    pub address: u16,
+    pub data: Vec<u8>,
+}
+
 impl Serialize for Writemem {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_u16(self.address);
-        let mut seq = serializer.serialize_seq(Some(self.length as usize))?;
-        let mut count = self.length;
-        for d in self.data {
-            if count > 0 {
-                seq.serialize_element(&d)?;
-            } else {
-                break;
-            }
-            count = count - 1;
-        }
-        seq.end()
+        let wm = WriteMem {
+            address: self.address,
+            data: self.data[0..self.length as usize].to_vec(),
+        };
+        wm.serialize(serializer)
     }
 }
 
@@ -170,29 +169,22 @@ impl<'de> Deserialize<'de> for Writemem {
     where
         D: Deserializer<'de>,
     {
-        let address = u16::deserialize(deserializer)?;
-        // not the most efficient!  but simpler than implementing a whole deserializer.
-        let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
+        let wm: WriteMem = WriteMem::deserialize(deserializer)?;
 
-        let len = vecu8.len();
+        let mut w = Writemem {
+            address: wm.address,
+            length: wm.data.len() as u8,
+            data: [0; MAX_WRITEMEM],
+        };
 
-        vecu8.truncate(MAX_WRITEMEM);
-
-        for _ in vecu8.len()..MAX_WRITEMEM {
-            vecu8.push(0 as u8);
+        // copy in data.
+        let mut toidx = 0;
+        for x in wm.data {
+            w.data[toidx] = x;
+            toidx = toidx + 1;
         }
 
-        Ok(Writemem {
-            address: address,
-            length: len as u8,
-            data: vecu8.try_into().unwrap_or_else(|v: Vec<u8>| {
-                panic!(
-                    "Expected a Vec of length {} but it was {}",
-                    MAX_WRITEMEM,
-                    v.len()
-                )
-            }),
-        })
+        Ok(w)
     }
 }
 

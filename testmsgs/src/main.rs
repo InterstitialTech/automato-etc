@@ -50,10 +50,10 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 println!("writing json files");
                 write_json_message_files(&dir)?;
             }
-            (Some(dir), Some(("read", _sub_matches))) => unsafe {
+            (Some(dir), Some(("read", _sub_matches))) => {
                 println!("reading json files");
                 read_json_message_files(&dir)?;
-            },
+            }
             meh => {
                 bail!("unhandled command! {:?}", meh)
             }
@@ -274,23 +274,38 @@ fn write_json_message_files(dir: &str) -> Result<(), Box<dyn std::error::Error>>
         let mut onfile = File::create(format!("{}/readmemreply.js", dir).as_str())?;
 
         let v = serde_json::to_value(mutmsg.payload.data.readmemreply)?;
-        onfile.write(v.to_string().as_bytes());
+        onfile.write(v.to_string().as_bytes())?;
         println!("setup_readmemreply: {}", am::payload_size(&mutmsg.payload));
+    }
+
+    unsafe {
+        let test = [5, 4, 3, 2, 1];
+        am::setup_writemem(&mut mutmsg.payload, 5678, &test);
+        let mut onfile = File::create(format!("{}/writemem.js", dir).as_str())?;
+        let v = serde_json::to_value(mutmsg.payload.data.writemem)?;
+        onfile.write(v.to_string().as_bytes())?;
+
+        println!("setup_writemem: {}", am::payload_size(&mutmsg.payload));
     }
 
     Ok(())
 }
 
 fn read_json_message_files(dir: &str) -> Result<bool, Box<dyn std::error::Error>> {
-    let mut mfile = File::open(format!("{}/readmemreply.js", dir).as_str())?;
-
-    let mut s = String::new();
-    mfile.read_to_string(&mut s)?;
-
-    let rr: am::ReadmemReply = serde_json::from_str(s.as_str())?;
-
-    println!("rr: {:?} ", rr);
-
+    {
+        let mut mfile = File::open(format!("{}/readmemreply.js", dir).as_str())?;
+        let mut s = String::new();
+        mfile.read_to_string(&mut s)?;
+        let rr: am::ReadmemReply = serde_json::from_str(s.as_str())?;
+        println!("rr: {:?} ", rr);
+    }
+    {
+        let mut mfile = File::open(format!("{}/writemem.js", dir).as_str())?;
+        let mut s = String::new();
+        mfile.read_to_string(&mut s)?;
+        let rr: am::Writemem = serde_json::from_str(s.as_str())?;
+        println!("rr: {:?} ", rr);
+    }
     Ok(true)
 }
 
