@@ -1,6 +1,7 @@
 use automato::automatomsg as am;
 use automato::automatomsg::{Msgbuf, Payload, PayloadData, PayloadType, ResultCode};
 use clap::{Arg, Command};
+use serde_json;
 use simple_error::bail;
 use std::error::Error;
 use std::fs::File;
@@ -29,23 +30,50 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .required(true)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("json")
+                .long("json")
+                .help("read/write messages in json form")
+                .takes_value(false),
+        )
         .subcommand_required(true)
         .subcommand(Command::new("write").about("write files"))
         .subcommand(Command::new("read").about("read files"))
         .get_matches();
 
-    // set up the outgoing message.
-    match (matches.value_of("dir"), matches.subcommand()) {
-        (Some(dir), Some(("write", _sub_matches))) => {
-            println!("writing files");
-            write_message_files(&dir)?;
+    let json = matches.is_present("json");
+
+    if json {
+        // set up the outgoing message.
+        match (matches.value_of("dir"), matches.subcommand()) {
+            (Some(dir), Some(("write", _sub_matches))) => {
+                println!("writing json files");
+                write_json_message_files(&dir)?;
+            }
+            (Some(dir), Some(("read", _sub_matches))) => unsafe {
+                println!("reading json files");
+                read_json_message_files(&dir)?;
+            },
+            meh => {
+                bail!("unhandled command! {:?}", meh)
+            }
         }
-        (Some(dir), Some(("read", _sub_matches))) => unsafe {
-            println!("reading files");
-            read_message_files(&dir)?;
-        },
-        meh => {
-            bail!("unhandled command! {:?}", meh)
+    } else {
+        println!("json: {}", json);
+
+        // set up the outgoing message.
+        match (matches.value_of("dir"), matches.subcommand()) {
+            (Some(dir), Some(("write", _sub_matches))) => {
+                println!("writing files");
+                write_message_files(&dir)?;
+            }
+            (Some(dir), Some(("read", _sub_matches))) => unsafe {
+                println!("reading files");
+                read_message_files(&dir)?;
+            },
+            meh => {
+                bail!("unhandled command! {:?}", meh)
+            }
         }
     }
 
@@ -230,6 +258,40 @@ fn write_message_files(dir: &str) -> Result<(), serial::Error> {
     };
 
     Ok(())
+}
+
+fn write_json_message_files(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut mutmsg = Msgbuf {
+        payload: Payload {
+            payload_type: am::PayloadType::PtAck,
+            data: PayloadData { pin: 0 },
+        },
+    };
+
+    unsafe {
+        let test = [1, 2, 3, 4, 5];
+        am::setup_readmemreply(&mut mutmsg.payload, &test);
+        let mut onfile = File::create(format!("{}/readmemreply.js", dir).as_str())?;
+
+        let v = serde_json::to_value(mutmsg.payload.data.readmemreply)?;
+        onfile.write(v.to_string().as_bytes());
+        println!("setup_readmemreply: {}", am::payload_size(&mutmsg.payload));
+    }
+
+    Ok(())
+}
+
+fn read_json_message_files(dir: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut mfile = File::open(format!("{}/readmemreply.js", dir).as_str())?;
+
+    let mut s = String::new();
+    mfile.read_to_string(&mut s)?;
+
+    let rr: am::ReadmemReply = serde_json::from_str(s.as_str())?;
+
+    println!("rr: {:?} ", rr);
+
+    Ok(true)
 }
 
 unsafe fn read_msg_file(name: &str, msgbuf: &mut Msgbuf) -> Result<(), Box<dyn Error>> {
