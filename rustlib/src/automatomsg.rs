@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, SerializeTuple, Serializer};
 use serde::{Deserialize, Serialize};
 use std::mem::size_of;
@@ -97,6 +98,37 @@ impl Serialize for ReadmemReply {
             seq.serialize_element(&d)?;
         }
         seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for ReadmemReply {
+    fn deserialize<D>(deserializer: D) -> Result<ReadmemReply, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // not the most efficient!  will implement later.
+        let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
+
+        let len = vecu8.len();
+
+        // now
+        //
+        vecu8.truncate(MAX_READMEM);
+
+        for _i in [vecu8.len()..MAX_READMEM] {
+            vecu8.push(0 as u8);
+        }
+
+        Ok(ReadmemReply {
+            length: len as u8,
+            data: vecu8.try_into().unwrap_or_else(|v: Vec<u8>| {
+                panic!(
+                    "Expected a Vec of length {} but it was {}",
+                    MAX_READMEM,
+                    v.len()
+                )
+            }),
+        })
     }
 }
 
