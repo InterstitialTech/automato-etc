@@ -1,5 +1,5 @@
 {
-  description = "rust dev environment";
+  description = "webserver dev environment";
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
@@ -18,8 +18,6 @@
               cargo
               cargo-watch
               rustc
-              openssl.dev
-              pkgconfig
               elm2nix
               elmPackages.elm
               elmPackages.elm-analyse

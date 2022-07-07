@@ -52,6 +52,12 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .required(true)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("json")
+                .long("json")
+                .help("write message output in json format")
+                .takes_value(false),
+        )
         .subcommand_required(true)
         .subcommand(
             Command::new("writepin")
@@ -109,6 +115,8 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         }
         _ => bail!("arg failure"),
     };
+
+    let json = matches.is_present("json");
 
     let mut mb = Msgbuf {
         buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
@@ -216,7 +224,11 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     //     let c = retmsg.buf[i];
                     //     println!("{} - {}", c, c as char);
                     // }
-                    am::print_payload(&retmsg.payload);
+                    if json {
+                        println!("unimplemented");
+                    } else {
+                        am::print_payload(&retmsg.payload);
+                    }
                 }
                 Ok(false) => {
                     println!("here");

@@ -1,10 +1,13 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use serde::de::Deserializer;
+use serde::ser::{SerializeSeq, Serializer};
+use serde::{Deserialize, Serialize};
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
 // --------------------------------------------------------
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum PayloadType {
     PtAck = 0,
@@ -28,7 +31,7 @@ pub enum PayloadType {
     PtReadfieldreply = 18,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct RemoteInfo {
@@ -38,7 +41,7 @@ pub struct RemoteInfo {
     pub fieldcount: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinval {
@@ -46,7 +49,7 @@ pub struct Pinval {
     pub state: u8,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct AnalogPinval {
@@ -54,7 +57,7 @@ pub struct AnalogPinval {
     pub state: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinmode {
@@ -62,7 +65,7 @@ pub struct Pinmode {
     pub mode: u8,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Readmem {
@@ -77,7 +80,7 @@ const MAX_WRITEMEM: usize = 247;
 // #define MAX_READMEM RH_RF95_MAX_MESSAGE_LEN - sizeof(u8) - sizeof(u8)
 const MAX_READMEM: usize = 249;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadmemReply {
@@ -85,7 +88,57 @@ pub struct ReadmemReply {
     pub data: [u8; MAX_READMEM],
 }
 
-#[derive(Clone, Copy)]
+impl Serialize for ReadmemReply {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.length as usize))?;
+        let mut count = self.length;
+        for d in self.data {
+            if count > 0 {
+                seq.serialize_element(&d)?;
+            } else {
+                break;
+            }
+            count = count - 1;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for ReadmemReply {
+    fn deserialize<D>(deserializer: D) -> Result<ReadmemReply, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // not the most efficient!  but simpler than implementing a whole deserializer.
+        let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
+
+        println!("vecu8: {:?}", vecu8);
+
+        let len = vecu8.len();
+
+        vecu8.truncate(MAX_READMEM);
+
+        for _ in vecu8.len()..MAX_READMEM {
+            vecu8.push(0 as u8);
+        }
+
+        Ok(ReadmemReply {
+            length: len as u8,
+            data: vecu8.try_into().unwrap_or_else(|v: Vec<u8>| {
+                panic!(
+                    "Expected a Vec of length {} but it was {}",
+                    MAX_READMEM,
+                    v.len()
+                )
+            }),
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Writemem {
@@ -94,14 +147,59 @@ pub struct Writemem {
     pub data: [u8; MAX_WRITEMEM],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct WriteMemSerde {
+    pub address: u16,
+    pub data: Vec<u8>,
+}
+
+impl Serialize for Writemem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let wm = WriteMemSerde {
+            address: self.address,
+            data: self.data[0..self.length as usize].to_vec(),
+        };
+        wm.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Writemem {
+    fn deserialize<D>(deserializer: D) -> Result<Writemem, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wm: WriteMemSerde = WriteMemSerde::deserialize(deserializer)?;
+
+        println!("reading WriteMemSerde: {:?}", wm);
+
+        let mut w = Writemem {
+            address: wm.address,
+            length: wm.data.len() as u8,
+            data: [0; MAX_WRITEMEM],
+        };
+
+        // copy in data.
+        let mut toidx = 0;
+        for x in wm.data {
+            w.data[toidx] = x;
+            toidx = toidx + 1;
+        }
+
+        Ok(w)
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadField {
     pub index: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadFieldReply {
@@ -128,6 +226,7 @@ pub union PayloadData {
     pub failcode: u8,
     pub pin: u8,
     pub f: f32,
+    pub unit: (),
 }
 
 #[derive(Clone, Copy)]
@@ -138,13 +237,176 @@ pub struct Payload {
     pub data: PayloadData,
 }
 
-// used for non-mesh, non-routed comms.
-#[repr(C)]
-#[repr(packed)]
-pub struct Message {
-    pub fromid: u8,
-    pub toid: u8,
-    pub data: Payload,
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub enum PayloadEnum {
+    PeAck,
+    PeFail(u8),
+    PePinmode(Pinmode),
+    PeReadpin(u8),
+    PeReadpinreply(Pinval),
+    PeWritepin(Pinval),
+    PeReadmem(Readmem),
+    PeReadmemreply(ReadmemReply),
+    PeWritemem(Writemem),
+    PeReadinfo,
+    PeReadinforeply(RemoteInfo),
+    PeReadhumidity,
+    PeReadhumidityreply(f32),
+    PeReadtemperature,
+    PeReadtemperaturereply(f32),
+    PeReadanalog(u8),
+    PeReadanalogreply(AnalogPinval),
+    PeReadfield(ReadField),
+    PeReadfieldreply(ReadFieldReply),
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub struct PayloadSerde {
+    pub payload: PayloadEnum,
+}
+
+impl From<Payload> for PayloadEnum {
+    fn from(payload: Payload) -> PayloadEnum {
+        unsafe {
+            match payload.payload_type {
+                PayloadType::PtAck => PayloadEnum::PeAck,
+                PayloadType::PtFail => PayloadEnum::PeFail(payload.data.failcode),
+                PayloadType::PtPinmode => PayloadEnum::PePinmode(payload.data.pinmode),
+                PayloadType::PtReadpin => PayloadEnum::PeReadpin(payload.data.pin),
+                PayloadType::PtReadpinreply => PayloadEnum::PeReadpinreply(payload.data.pinval),
+                PayloadType::PtWritepin => PayloadEnum::PeWritepin(payload.data.pinval),
+                PayloadType::PtReadanalog => PayloadEnum::PeReadanalog(payload.data.pin),
+                PayloadType::PtReadanalogreply => {
+                    PayloadEnum::PeReadanalogreply(payload.data.analogpinval)
+                }
+                PayloadType::PtReadmem => PayloadEnum::PeReadmem(payload.data.readmem),
+                PayloadType::PtReadmemreply => {
+                    PayloadEnum::PeReadmemreply(payload.data.readmemreply)
+                }
+                PayloadType::PtWritemem => PayloadEnum::PeWritemem(payload.data.writemem),
+                PayloadType::PtReadinfo => PayloadEnum::PeReadinfo,
+                PayloadType::PtReadinforeply => {
+                    PayloadEnum::PeReadinforeply(payload.data.remoteinfo)
+                }
+                PayloadType::PtReadhumidity => PayloadEnum::PeReadhumidity,
+                PayloadType::PtReadhumidityreply => {
+                    PayloadEnum::PeReadhumidityreply(payload.data.f)
+                }
+                PayloadType::PtReadtemperature => PayloadEnum::PeReadtemperature,
+                PayloadType::PtReadtemperaturereply => {
+                    PayloadEnum::PeReadtemperaturereply(payload.data.f)
+                }
+                PayloadType::PtReadfield => PayloadEnum::PeReadfield(payload.data.readfield),
+                PayloadType::PtReadfieldreply => {
+                    PayloadEnum::PeReadfieldreply(payload.data.readfieldreply)
+                }
+            }
+        }
+    }
+}
+impl From<PayloadEnum> for Payload {
+    fn from(pe: PayloadEnum) -> Payload {
+        let mut payload = Payload {
+            payload_type: PayloadType::PtAck,
+            data: PayloadData { unit: () },
+        };
+        match pe {
+            PayloadEnum::PeAck => {
+                payload.payload_type = PayloadType::PtAck;
+            }
+            PayloadEnum::PeFail(failcode) => {
+                payload.payload_type = PayloadType::PtFail;
+                payload.data.failcode = failcode
+            }
+            PayloadEnum::PePinmode(pinmode) => {
+                payload.payload_type = PayloadType::PtPinmode;
+                payload.data.pinmode = pinmode
+            }
+            PayloadEnum::PeReadpin(pin) => {
+                payload.payload_type = PayloadType::PtReadpin;
+                payload.data.pin = pin
+            }
+            PayloadEnum::PeReadpinreply(pinval) => {
+                payload.payload_type = PayloadType::PtReadpinreply;
+                payload.data.pinval = pinval
+            }
+            PayloadEnum::PeWritepin(pinval) => {
+                payload.payload_type = PayloadType::PtWritepin;
+                payload.data.pinval = pinval
+            }
+            PayloadEnum::PeReadanalog(pin) => {
+                payload.payload_type = PayloadType::PtReadanalog;
+                payload.data.pin = pin
+            }
+            PayloadEnum::PeReadanalogreply(analogpinval) => {
+                payload.payload_type = PayloadType::PtReadanalogreply;
+                payload.data.analogpinval = analogpinval
+            }
+            PayloadEnum::PeReadmem(readmem) => {
+                payload.payload_type = PayloadType::PtReadmem;
+                payload.data.readmem = readmem
+            }
+            PayloadEnum::PeReadmemreply(readmemreply) => {
+                payload.payload_type = PayloadType::PtReadmemreply;
+                payload.data.readmemreply = readmemreply
+            }
+            PayloadEnum::PeWritemem(writemem) => {
+                payload.payload_type = PayloadType::PtWritemem;
+                payload.data.writemem = writemem
+            }
+            PayloadEnum::PeReadinfo => {
+                payload.payload_type = PayloadType::PtReadinfo;
+            }
+            PayloadEnum::PeReadinforeply(remoteinfo) => {
+                payload.payload_type = PayloadType::PtReadinforeply;
+                payload.data.remoteinfo = remoteinfo
+            }
+            PayloadEnum::PeReadhumidity => {
+                payload.payload_type = PayloadType::PtReadhumidity;
+            }
+            PayloadEnum::PeReadhumidityreply(f) => {
+                payload.payload_type = PayloadType::PtReadhumidityreply;
+                payload.data.f = f
+            }
+            PayloadEnum::PeReadtemperature => {
+                payload.payload_type = PayloadType::PtReadtemperature;
+            }
+            PayloadEnum::PeReadtemperaturereply(f) => {
+                payload.payload_type = PayloadType::PtReadtemperaturereply;
+                payload.data.f = f
+            }
+            PayloadEnum::PeReadfield(readfield) => {
+                payload.payload_type = PayloadType::PtReadfield;
+                payload.data.readfield = readfield
+            }
+            PayloadEnum::PeReadfieldreply(readfieldreply) => {
+                payload.payload_type = PayloadType::PtReadfieldreply;
+                payload.data.readfieldreply = readfieldreply
+            }
+        }
+        payload
+    }
+}
+
+impl Serialize for Payload {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let pe = PayloadEnum::from(self.clone());
+        pe.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Payload {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let pe = PayloadEnum::deserialize(deserializer)?;
+
+        Ok(Payload::from(pe))
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -155,7 +417,7 @@ pub union Msgbuf {
     pub payload: Payload,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize, Debug)]
 #[repr(u8)]
 pub enum ResultCode {
     RcOk,
