@@ -118,8 +118,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
 
     let json = matches.is_present("json");
 
-    println!("json: {:?}", json);
-
     let mut mb = Msgbuf {
         buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
     };
@@ -227,12 +225,10 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     //     println!("{} - {}", c, c as char);
                     // }
                     if json {
-
+                        println!("unimplemented");
+                    } else {
+                        am::print_payload(&retmsg.payload);
                     }
-                    else
-                      {
-                    am::print_payload(&retmsg.payload);
-                      }
                 }
                 Ok(false) => {
                     println!("here");

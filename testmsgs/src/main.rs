@@ -237,14 +237,12 @@ unsafe fn read_message_files(
     };
 
     read_msg_file(dir, "ack", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtAck {
         println!("ack msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "fail", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtFail
         || mb.payload.data.failcode != ResultCode::RcInvalidRhRouterError as u8
     {
@@ -253,7 +251,6 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "pinmode", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtPinmode
         || mb.payload.data.pinmode.pin != 26
         || mb.payload.data.pinmode.mode != 2
@@ -263,14 +260,12 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readpin", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadpin || mb.payload.data.pin != 22 {
         println!("readpin msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "readpinreply", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadpinreply
         || mb.payload.data.pinval.pin != 26
         || mb.payload.data.pinval.state != 1
@@ -280,7 +275,6 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "writepin", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtWritepin
         || mb.payload.data.pinval.pin != 15
         || mb.payload.data.pinval.state != 1
@@ -290,14 +284,12 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readanalog", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadanalog || mb.payload.data.pin != 27 {
         println!("readanalog msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "readanalogreply", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadanalogreply
         || mb.payload.data.analogpinval.pin != 6
         || mb.payload.data.analogpinval.state != 500
@@ -307,7 +299,6 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readmem", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadmem
         || mb.payload.data.readmem.address != 1500
         || mb.payload.data.readmem.length != 75
@@ -318,7 +309,6 @@ unsafe fn read_message_files(
 
     read_msg_file(dir, "readmemreply", &mut mb)?;
     let testrm = [1, 2, 3, 4, 5];
-
     if mb.payload.data.readmemreply.length != 5 {
         println!(
             "invalid readmemreply length: {}",
@@ -333,7 +323,6 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "writemem", &mut mb)?;
-
     let testwm = [5, 4, 3, 2, 1];
     if mb.payload.data.writemem.address != 5678
         || mb.payload.data.writemem.length != 5
@@ -344,14 +333,12 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readinfo", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadinfo {
         println!("readinfo msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "readinforeply", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadinforeply
         || (mb.payload.data.remoteinfo.protoversion - 1.1) > 0.00000001
         || mb.payload.data.remoteinfo.mac_address != 5678
@@ -363,14 +350,12 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readhumidity", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadhumidity {
         println!("readhumidity msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "readhumidityreply", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadhumidityreply
         || (mb.payload.data.f - 45.7) > 0.000001
     {
@@ -379,14 +364,12 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readtemperature", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadtemperature {
         println!("readtemperature msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "readtemperaturereply", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadtemperaturereply
         || (mb.payload.data.f - 98.6) > 0.000001
     {
@@ -395,14 +378,12 @@ unsafe fn read_message_files(
     }
 
     read_msg_file(dir, "readfield", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadfield || mb.payload.data.readfield.index != 1 {
         println!("readfield msg failed");
         return Ok(false);
     }
 
     read_msg_file(dir, "readfieldreply", &mut mb)?;
-
     if mb.payload.payload_type != PayloadType::PtReadfieldreply
         || mb.payload.data.readfieldreply.index != 7
         || mb.payload.data.readfieldreply.offset != 77
