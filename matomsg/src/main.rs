@@ -116,10 +116,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         _ => bail!("arg failure"),
     };
 
-    let json = match matches.occurrences_of("json") {
-        0 => false,
-        _ => true,
-    };
+    let json = matches.is_present("json");
 
     println!("json: {:?}", json);
 
@@ -229,7 +226,13 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     //     let c = retmsg.buf[i];
                     //     println!("{} - {}", c, c as char);
                     // }
+                    if json {
+
+                    }
+                    else
+                      {
                     am::print_payload(&retmsg.payload);
+                      }
                 }
                 Ok(false) => {
                     println!("here");

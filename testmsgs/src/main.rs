@@ -261,50 +261,71 @@ fn write_message_files(dir: &str) -> Result<(), serial::Error> {
 }
 
 fn write_json_message_files(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut mutmsg = Msgbuf {
-        payload: Payload {
-            payload_type: am::PayloadType::PtAck,
-            data: PayloadData { pin: 0 },
-        },
+    // let mut mutmsg = Msgbuf {
+    //     payload: Payload {
+    //         payload_type: am::PayloadType::PtAck,
+    //         data: PayloadData { pin: 0 },
+    //     },
+    // };
+
+    let mut payload = Payload {
+        payload_type: PayloadType::PtAck,
+        data: PayloadData { unit: () },
     };
 
-    unsafe {
+    {
+        let test = [5, 4, 3, 2, 1];
+        am::setup_writemem(&mut payload, 5678, &test);
+        let v = serde_json::to_value(payload)?;
+        let mut onfile = File::create(format!("{}/writemem.js", dir).as_str())?;
+        onfile.write(v.to_string().as_bytes())?;
+
+        println!("setup_writemem: {}", am::payload_size(&payload));
+    }
+
+    {
         let test = [1, 2, 3, 4, 5];
-        am::setup_readmemreply(&mut mutmsg.payload, &test);
+        am::setup_readmemreply(&mut payload, &test);
         let mut onfile = File::create(format!("{}/readmemreply.js", dir).as_str())?;
 
-        let v = serde_json::to_value(mutmsg.payload.data.readmemreply)?;
+        let v = serde_json::to_value(payload)?;
         onfile.write(v.to_string().as_bytes())?;
-        println!("setup_readmemreply: {}", am::payload_size(&mutmsg.payload));
+        println!("setup_readmemreply: {}", am::payload_size(&payload));
     }
 
-    unsafe {
-        let test = [5, 4, 3, 2, 1];
-        am::setup_writemem(&mut mutmsg.payload, 5678, &test);
-        let mut onfile = File::create(format!("{}/writemem.js", dir).as_str())?;
-        let v = serde_json::to_value(mutmsg.payload.data.writemem)?;
-        onfile.write(v.to_string().as_bytes())?;
+    // unsafe {
+    //     let test = [5, 4, 3, 2, 1];
+    //     am::setup_writemem(&mut mutmsg.payload, 5678, &test);
+    //     let mut onfile = File::create(format!("{}/writemem.js", dir).as_str())?;
+    //     let v = serde_json::to_value(mutmsg.payload.data.writemem)?;
+    //     onfile.write(v.to_string().as_bytes())?;
 
-        println!("setup_writemem: {}", am::payload_size(&mutmsg.payload));
-    }
+    //     println!("setup_writemem: {}", am::payload_size(&mutmsg.payload));
+    // }
 
     Ok(())
 }
 
 fn read_json_message_files(dir: &str) -> Result<bool, Box<dyn std::error::Error>> {
     {
-        let mut mfile = File::open(format!("{}/readmemreply.js", dir).as_str())?;
-        let mut s = String::new();
-        mfile.read_to_string(&mut s)?;
-        let rr: am::ReadmemReply = serde_json::from_str(s.as_str())?;
-        println!("rr: {:?} ", rr);
-    }
-    {
         let mut mfile = File::open(format!("{}/writemem.js", dir).as_str())?;
         let mut s = String::new();
         mfile.read_to_string(&mut s)?;
-        let rr: am::Writemem = serde_json::from_str(s.as_str())?;
-        println!("rr: {:?} ", rr);
+        println!("json input: {}", s);
+        let v: serde_json::Value = serde_json::from_str(s.as_str())?;
+        let p: am::Payload = serde_json::from_value(v)?;
+        println!("p: {:?} ", serde_json::to_value(p));
+        println!("");
+    }
+    {
+        let mut mfile = File::open(format!("{}/readmemreply.js", dir).as_str())?;
+        let mut s = String::new();
+        mfile.read_to_string(&mut s)?;
+        println!("json input: {}", s);
+        let v: serde_json::Value = serde_json::from_str(s.as_str())?;
+        let p: am::Payload = serde_json::from_value(v)?;
+        println!("p: {:?} ", serde_json::to_value(p));
+        println!("");
     }
     Ok(true)
 }

@@ -1,7 +1,9 @@
 use num_derive::{FromPrimitive, ToPrimitive};
-use serde::de::Deserializer;
-use serde::ser::{SerializeSeq, Serializer};
+use serde::de;
+use serde::de::{Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::{SerializeSeq, SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
@@ -115,6 +117,8 @@ impl<'de> Deserialize<'de> for ReadmemReply {
         // not the most efficient!  but simpler than implementing a whole deserializer.
         let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
 
+        println!("vecu8: {:?}", vecu8);
+
         let len = vecu8.len();
 
         vecu8.truncate(MAX_READMEM);
@@ -146,7 +150,7 @@ pub struct Writemem {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct WriteMem {
+pub struct WriteMemSerde {
     pub address: u16,
     pub data: Vec<u8>,
 }
@@ -156,7 +160,7 @@ impl Serialize for Writemem {
     where
         S: Serializer,
     {
-        let wm = WriteMem {
+        let wm = WriteMemSerde {
             address: self.address,
             data: self.data[0..self.length as usize].to_vec(),
         };
@@ -169,7 +173,9 @@ impl<'de> Deserialize<'de> for Writemem {
     where
         D: Deserializer<'de>,
     {
-        let wm: WriteMem = WriteMem::deserialize(deserializer)?;
+        let wm: WriteMemSerde = WriteMemSerde::deserialize(deserializer)?;
+
+        println!("reading WriteMemSerde: {:?}", wm);
 
         let mut w = Writemem {
             address: wm.address,
@@ -222,6 +228,7 @@ pub union PayloadData {
     pub failcode: u8,
     pub pin: u8,
     pub f: f32,
+    pub unit: (),
 }
 
 #[derive(Clone, Copy)]
@@ -232,13 +239,451 @@ pub struct Payload {
     pub data: PayloadData,
 }
 
-// used for non-mesh, non-routed comms.
-#[repr(C)]
-#[repr(packed)]
-pub struct Message {
-    pub fromid: u8,
-    pub toid: u8,
-    pub data: Payload,
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub enum PayloadEnum {
+    PeAck,
+    PeFail(u8),
+    PePinmode(Pinmode),
+    PeReadpin(u8),
+    PeReadpinreply(Pinval),
+    PeWritepin(Pinval),
+    PeReadmem(Readmem),
+    PeReadmemreply(ReadmemReply),
+    PeWritemem(Writemem),
+    PeReadinfo,
+    PeReadinforeply(RemoteInfo),
+    PeReadhumidity,
+    PeReadhumidityreply(f32),
+    PeReadtemperature,
+    PeReadtemperaturereply(f32),
+    PeReadanalog(u8),
+    PeReadanalogreply(AnalogPinval),
+    PeReadfield(ReadField),
+    PeReadfieldreply(ReadFieldReply),
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub struct PayloadSerde {
+    pub payload: PayloadEnum,
+}
+
+impl From<Payload> for PayloadEnum {
+    fn from(payload: Payload) -> PayloadEnum {
+        unsafe {
+            match payload.payload_type {
+                PayloadType::PtAck => PayloadEnum::PeAck,
+                PayloadType::PtFail => PayloadEnum::PeFail(payload.data.failcode),
+                PayloadType::PtPinmode => PayloadEnum::PePinmode(payload.data.pinmode),
+                PayloadType::PtReadpin => PayloadEnum::PeReadpin(payload.data.pin),
+                PayloadType::PtReadpinreply => PayloadEnum::PeReadpinreply(payload.data.pinval),
+                PayloadType::PtWritepin => PayloadEnum::PeWritepin(payload.data.pinval),
+                PayloadType::PtReadanalog => PayloadEnum::PeReadanalog(payload.data.pin),
+                PayloadType::PtReadanalogreply => {
+                    PayloadEnum::PeReadanalogreply(payload.data.analogpinval)
+                }
+                PayloadType::PtReadmem => PayloadEnum::PeReadmem(payload.data.readmem),
+                PayloadType::PtReadmemreply => {
+                    PayloadEnum::PeReadmemreply(payload.data.readmemreply)
+                }
+                PayloadType::PtWritemem => PayloadEnum::PeWritemem(payload.data.writemem),
+                PayloadType::PtReadinfo => PayloadEnum::PeReadinfo,
+                PayloadType::PtReadinforeply => {
+                    PayloadEnum::PeReadinforeply(payload.data.remoteinfo)
+                }
+                PayloadType::PtReadhumidity => PayloadEnum::PeReadhumidity,
+                PayloadType::PtReadhumidityreply => {
+                    PayloadEnum::PeReadhumidityreply(payload.data.f)
+                }
+                PayloadType::PtReadtemperature => PayloadEnum::PeReadtemperature,
+                PayloadType::PtReadtemperaturereply => {
+                    PayloadEnum::PeReadtemperaturereply(payload.data.f)
+                }
+                PayloadType::PtReadfield => PayloadEnum::PeReadfield(payload.data.readfield),
+                PayloadType::PtReadfieldreply => {
+                    PayloadEnum::PeReadfieldreply(payload.data.readfieldreply)
+                }
+            }
+        }
+    }
+}
+impl From<PayloadEnum> for Payload {
+    fn from(pe: PayloadEnum) -> Payload {
+        let mut payload = Payload {
+            payload_type: PayloadType::PtAck,
+            data: PayloadData { unit: () },
+        };
+        match pe {
+            PayloadEnum::PeAck => {
+                payload.payload_type = PayloadType::PtAck;
+            }
+            PayloadEnum::PeFail(failcode) => {
+                payload.payload_type = PayloadType::PtFail;
+                payload.data.failcode = failcode
+            }
+            PayloadEnum::PePinmode(pinmode) => {
+                payload.payload_type = PayloadType::PtPinmode;
+                payload.data.pinmode = pinmode
+            }
+            PayloadEnum::PeReadpin(pin) => {
+                payload.payload_type = PayloadType::PtReadpin;
+                payload.data.pin = pin
+            }
+            PayloadEnum::PeReadpinreply(pinval) => {
+                payload.payload_type = PayloadType::PtReadpinreply;
+                payload.data.pinval = pinval
+            }
+            PayloadEnum::PeWritepin(pinval) => {
+                payload.payload_type = PayloadType::PtWritepin;
+                payload.data.pinval = pinval
+            }
+            PayloadEnum::PeReadanalog(pin) => {
+                payload.payload_type = PayloadType::PtReadanalog;
+                payload.data.pin = pin
+            }
+            PayloadEnum::PeReadanalogreply(analogpinval) => {
+                payload.payload_type = PayloadType::PtReadanalogreply;
+                payload.data.analogpinval = analogpinval
+            }
+            PayloadEnum::PeReadmem(readmem) => {
+                payload.payload_type = PayloadType::PtReadmem;
+                payload.data.readmem = readmem
+            }
+            PayloadEnum::PeReadmemreply(readmemreply) => {
+                payload.payload_type = PayloadType::PtReadmemreply;
+                payload.data.readmemreply = readmemreply
+            }
+            PayloadEnum::PeWritemem(writemem) => {
+                payload.payload_type = PayloadType::PtWritemem;
+                payload.data.writemem = writemem
+            }
+            PayloadEnum::PeReadinfo => {
+                payload.payload_type = PayloadType::PtReadinfo;
+            }
+            PayloadEnum::PeReadinforeply(remoteinfo) => {
+                payload.payload_type = PayloadType::PtReadinforeply;
+                payload.data.remoteinfo = remoteinfo
+            }
+            PayloadEnum::PeReadhumidity => {
+                payload.payload_type = PayloadType::PtReadhumidity;
+            }
+            PayloadEnum::PeReadhumidityreply(f) => {
+                payload.payload_type = PayloadType::PtReadhumidityreply;
+                payload.data.f = f
+            }
+            PayloadEnum::PeReadtemperature => {
+                payload.payload_type = PayloadType::PtReadtemperature;
+            }
+            PayloadEnum::PeReadtemperaturereply(f) => {
+                payload.payload_type = PayloadType::PtReadtemperaturereply;
+                payload.data.f = f
+            }
+            PayloadEnum::PeReadfield(readfield) => {
+                payload.payload_type = PayloadType::PtReadfield;
+                payload.data.readfield = readfield
+            }
+            PayloadEnum::PeReadfieldreply(readfieldreply) => {
+                payload.payload_type = PayloadType::PtReadfieldreply;
+                payload.data.readfieldreply = readfieldreply
+            }
+        }
+        payload
+    }
+}
+
+impl Serialize for Payload {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut s = serializer.serialize_struct("Payload", 2)?;
+
+        s.serialize_field("atype", &self.payload_type)?;
+
+        let unit = ();
+        unsafe {
+            match self.payload_type {
+                PayloadType::PtAck => s.serialize_field("data", &unit)?,
+                PayloadType::PtFail => s.serialize_field("data", &self.data.failcode)?,
+                PayloadType::PtPinmode => s.serialize_field("data", &self.data.pinmode)?,
+                PayloadType::PtReadpin => s.serialize_field("data", &self.data.pin)?,
+                PayloadType::PtReadpinreply => s.serialize_field("data", &self.data.pinval)?,
+                PayloadType::PtWritepin => s.serialize_field("data", &self.data.pinval)?,
+                PayloadType::PtReadanalog => s.serialize_field("data", &self.data.pin)?,
+                PayloadType::PtReadanalogreply => {
+                    s.serialize_field("data", &self.data.analogpinval)?
+                }
+                PayloadType::PtReadmem => s.serialize_field("data", &self.data.readmem)?,
+                PayloadType::PtReadmemreply => {
+                    s.serialize_field("data", &self.data.readmemreply)?
+                }
+                PayloadType::PtWritemem => s.serialize_field("data", &self.data.writemem)?,
+                PayloadType::PtReadinfo => s.serialize_field("data", &unit)?,
+                PayloadType::PtReadinforeply => s.serialize_field("data", &self.data.remoteinfo)?,
+                PayloadType::PtReadhumidity => s.serialize_field("data", &unit)?,
+                PayloadType::PtReadhumidityreply => s.serialize_field("data", &{ self.data.f })?,
+                PayloadType::PtReadtemperature => s.serialize_field("data", &())?,
+                PayloadType::PtReadtemperaturereply => {
+                    s.serialize_field("data", &{ self.data.f })?
+                }
+                PayloadType::PtReadfield => s.serialize_field("data", &self.data.readfield)?,
+                PayloadType::PtReadfieldreply => {
+                    s.serialize_field("data", &self.data.readfieldreply)?
+                }
+            }
+        };
+
+        s.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Payload {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        enum Field {
+            Type,
+            Data,
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`type` or `data`")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "atype" => Ok(Field::Type),
+                            "data" => Ok(Field::Data),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct PayloadVisitor;
+
+        impl<'de> Visitor<'de> for PayloadVisitor {
+            type Value = Payload;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct Payload")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<Payload, V::Error>
+            where
+                V: SeqAccess<'de>,
+            {
+                let mut payload = Payload {
+                    payload_type: PayloadType::PtAck,
+                    data: PayloadData { unit: () },
+                };
+                payload.payload_type = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+
+                println!("visit_seq");
+
+                match payload.payload_type {
+                    PayloadType::PtAck => {}
+
+                    PayloadType::PtFail => {
+                        payload.data.failcode = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtPinmode => {
+                        payload.data.pinmode = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadpin => {
+                        payload.data.pin = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadpinreply => {
+                        payload.data.pinval = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtWritepin => {
+                        payload.data.pinval = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadanalog => {
+                        payload.data.pin = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadanalogreply => {
+                        payload.data.analogpinval = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadmem => {
+                        payload.data.readmem = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadmemreply => {
+                        payload.data.readmemreply = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtWritemem => {
+                        payload.data.writemem = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadinfo => {}
+                    PayloadType::PtReadinforeply => {
+                        payload.data.remoteinfo = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadhumidity => {}
+                    PayloadType::PtReadhumidityreply => {
+                        payload.data.f = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadtemperature => {}
+                    PayloadType::PtReadtemperaturereply => {
+                        payload.data.f = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadfield => {
+                        payload.data.readfield = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                    PayloadType::PtReadfieldreply => {
+                        payload.data.readfieldreply = seq
+                            .next_element()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    }
+                };
+
+                Ok(payload)
+            }
+            fn visit_map<V>(self, mut map: V) -> Result<Payload, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut payload = Payload {
+                    payload_type: PayloadType::PtAck,
+                    data: PayloadData { unit: () },
+                };
+
+                let mut payload_type = None;
+                let mut data = None;
+
+                println!("visit_map");
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Type => {
+                            if payload_type.is_some() {
+                                return Err(de::Error::duplicate_field("atype"));
+                            }
+                            payload.payload_type = map.next_value()?;
+                            payload_type = Some(payload.payload_type);
+                        }
+                        Field::Data => {
+                            if data.is_some() {
+                                return Err(de::Error::duplicate_field("data"));
+                            }
+                            if payload_type.is_none() {
+                                return Err(de::Error::missing_field("type needed before data"));
+                            }
+                            data = Some(());
+                            match payload.payload_type {
+                                PayloadType::PtAck => {}
+
+                                PayloadType::PtFail => {
+                                    payload.data.failcode = map.next_value()?;
+                                }
+                                PayloadType::PtPinmode => {
+                                    payload.data.pinmode = map.next_value()?;
+                                }
+                                PayloadType::PtReadpin => {
+                                    payload.data.pin = map.next_value()?;
+                                }
+                                PayloadType::PtReadpinreply => {
+                                    payload.data.pinval = map.next_value()?;
+                                }
+                                PayloadType::PtWritepin => {
+                                    payload.data.pinval = map.next_value()?;
+                                }
+                                PayloadType::PtReadanalog => {
+                                    payload.data.pin = map.next_value()?;
+                                }
+                                PayloadType::PtReadanalogreply => {
+                                    payload.data.analogpinval = map.next_value()?;
+                                }
+                                PayloadType::PtReadmem => {
+                                    payload.data.readmem = map.next_value()?;
+                                }
+                                PayloadType::PtReadmemreply => {
+                                    println!("PayloadType::PtReadmemreply");
+                                    payload.data.readmemreply = map.next_value()?;
+                                }
+                                PayloadType::PtWritemem => {
+                                    println!("PayloadType::PtWritemem ");
+                                    payload.data.writemem = map.next_value()?;
+                                }
+                                PayloadType::PtReadinfo => {}
+                                PayloadType::PtReadinforeply => {
+                                    payload.data.remoteinfo = map.next_value()?;
+                                }
+                                PayloadType::PtReadhumidity => {}
+                                PayloadType::PtReadhumidityreply => {
+                                    payload.data.f = map.next_value()?;
+                                }
+                                PayloadType::PtReadtemperature => {}
+                                PayloadType::PtReadtemperaturereply => {
+                                    payload.data.f = map.next_value()?;
+                                }
+                                PayloadType::PtReadfield => {
+                                    payload.data.readfield = map.next_value()?;
+                                }
+                                PayloadType::PtReadfieldreply => {
+                                    payload.data.readfieldreply = map.next_value()?;
+                                }
+                            };
+                        }
+                    }
+                }
+                if payload_type == None {
+                    return Err(de::Error::missing_field("atype"));
+                } else if data == None {
+                    return Err(de::Error::missing_field("data"));
+                }
+
+                Ok(payload)
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &["atype", "data"];
+        deserializer.deserialize_struct("Payload", FIELDS, PayloadVisitor)
+    }
 }
 
 #[derive(Clone, Copy)]
