@@ -48,12 +48,12 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         match (matches.value_of("dir"), matches.subcommand()) {
             (Some(dir), Some(("write", _sub_matches))) => {
                 println!("writing json files");
-                write_json_message_files(&dir)?;
+                unsafe { write_message_files(&dir, write_json_message)? };
             }
-            (Some(dir), Some(("read", _sub_matches))) => {
+            (Some(dir), Some(("read", _sub_matches))) => unsafe {
                 println!("reading json files");
-                read_json_message_files(&dir)?;
-            }
+                read_message_files(&dir, read_msg_file_js)?;
+            },
             meh => {
                 bail!("unhandled command! {:?}", meh)
             }
@@ -65,11 +65,11 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         match (matches.value_of("dir"), matches.subcommand()) {
             (Some(dir), Some(("write", _sub_matches))) => {
                 println!("writing files");
-                write_message_files(&dir)?;
+                unsafe { write_message_files(&dir, write_bin_message)? };
             }
             (Some(dir), Some(("read", _sub_matches))) => unsafe {
                 println!("reading files");
-                read_message_files(&dir)?;
+                read_message_files(&dir, read_msg_file_bin)?;
             },
             meh => {
                 bail!("unhandled command! {:?}", meh)
@@ -80,261 +80,111 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn write_message_files(dir: &str) -> Result<(), serial::Error> {
-    let mut mutmsg = Msgbuf {
-        payload: Payload {
-            payload_type: am::PayloadType::PtAck,
-            data: PayloadData { pin: 0 },
-        },
-    };
-
-    unsafe {
-        am::setup_ack(&mut mutmsg.payload);
-        let mut onfile = File::create(format!("{}/ack.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_ack: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_fail(&mut mutmsg.payload, ResultCode::RcInvalidRhRouterError);
-        let mut onfile = File::create(format!("{}/fail.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_fail: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_pinmode(&mut mutmsg.payload, 26, 2);
-        let mut onfile = File::create(format!("{}/pinmode.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_pinmode: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readpin(&mut mutmsg.payload, 22);
-        let mut onfile = File::create(format!("{}/readpin.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readpin: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readpinreply(&mut mutmsg.payload, 26, 1);
-        let mut onfile = File::create(format!("{}/readpinreply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readpinreply: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_writepin(&mut mutmsg.payload, 15, 1);
-        let mut onfile = File::create(format!("{}/writepin.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_writepin: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readanalog(&mut mutmsg.payload, 27);
-        let mut onfile = File::create(format!("{}/readanalog.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readanalog: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readanalogreply(&mut mutmsg.payload, 6, 500);
-        let mut onfile = File::create(format!("{}/readanalogreply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!(
-            "setup_readanalogreply: {}",
-            am::payload_size(&mutmsg.payload)
-        );
-    }
-
-    unsafe {
-        am::setup_readmem(&mut mutmsg.payload, 1500, 75);
-        let mut onfile = File::create(format!("{}/readmem.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readmem: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        let test = [1, 2, 3, 4, 5];
-        am::setup_readmemreply(&mut mutmsg.payload, &test);
-        let mut onfile = File::create(format!("{}/readmemreply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readmemreply: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        let test = [5, 4, 3, 2, 1];
-        am::setup_writemem(&mut mutmsg.payload, 5678, &test);
-        let mut onfile = File::create(format!("{}/writemem.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_writemem: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readinfo(&mut mutmsg.payload);
-        let mut onfile = File::create(format!("{}/readinfo.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readinfo: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readinforeply(&mut mutmsg.payload, 1.1, 5678, 5000, 5);
-        let mut onfile = File::create(format!("{}/readinforeply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readinforeply: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readhumidity(&mut mutmsg.payload);
-        let mut onfile = File::create(format!("{}/readhumidity.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readhumidity: {}", am::payload_size(&mutmsg.payload));
-    }
-
-    unsafe {
-        am::setup_readhumidityreply(&mut mutmsg.payload, 45.7);
-        let mut onfile = File::create(format!("{}/readhumidityreply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!(
-            "setup_readhumidityreply: {}",
-            am::payload_size(&mutmsg.payload)
-        );
-    }
-
-    unsafe {
-        am::setup_readtemperature(&mut mutmsg.payload);
-        let mut onfile = File::create(format!("{}/readtemperature.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!(
-            "setup_readtemperature: {}",
-            am::payload_size(&mutmsg.payload)
-        );
-    }
-
-    unsafe {
-        am::setup_readtemperaturereply(&mut mutmsg.payload, 98.6);
-        let mut onfile = File::create(format!("{}/readtemperaturereply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!(
-            "setup_readtemperaturereply: {}",
-            am::payload_size(&mutmsg.payload)
-        );
-    }
-
-    unsafe {
-        am::setup_readfield(&mut mutmsg.payload, 1);
-        let mut onfile = File::create(format!("{}/readfield.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!("setup_readfield: {}", am::payload_size(&mutmsg.payload));
-    };
-
-    unsafe {
-        am::setup_readfieldreply(&mut mutmsg.payload, 7, 77, 20, 4, "wat".as_bytes());
-        let mut onfile = File::create(format!("{}/readfieldreply.bin", dir).as_str())?;
-        onfile.write(&mutmsg.buf[0..am::payload_size(&mutmsg.payload)])?;
-
-        println!(
-            "setup_readfieldreply: {}",
-            am::payload_size(&mutmsg.payload)
-        );
-    };
-
+fn write_json_message(
+    dir: &str,
+    filename: &str,
+    payload: Payload,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fname = format!("{}/{}.js", dir, filename);
+    let v = serde_json::to_value(payload)?;
+    let mut onfile = File::create(fname.as_str())?;
+    onfile.write(v.to_string().as_bytes())?;
     Ok(())
 }
 
-fn write_json_message_files(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // let mut mutmsg = Msgbuf {
-    //     payload: Payload {
-    //         payload_type: am::PayloadType::PtAck,
-    //         data: PayloadData { pin: 0 },
-    //     },
-    // };
+unsafe fn write_bin_message(
+    dir: &str,
+    filename: &str,
+    payload: Payload,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let msgbuf = Msgbuf { payload: payload };
+    let fname = format!("{}/{}.bin", dir, filename);
+    let mut onfile = File::create(fname.as_str())?;
+    onfile.write(&msgbuf.buf[0..am::payload_size(&msgbuf.payload)])?;
+    Ok(())
+}
 
+unsafe fn write_message_files(
+    dir: &str,
+    write_message: unsafe fn(&str, &str, Payload) -> Result<(), Box<dyn std::error::Error>>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut payload = Payload {
         payload_type: PayloadType::PtAck,
         data: PayloadData { unit: () },
     };
 
-    {
-        let test = [5, 4, 3, 2, 1];
-        am::setup_writemem(&mut payload, 5678, &test);
-        let v = serde_json::to_value(payload)?;
-        let mut onfile = File::create(format!("{}/writemem.js", dir).as_str())?;
-        onfile.write(v.to_string().as_bytes())?;
+    am::setup_ack(&mut payload);
+    write_message(dir, "ack.js", payload)?;
 
-        println!("setup_writemem: {}", am::payload_size(&payload));
-    }
+    am::setup_fail(&mut payload, ResultCode::RcInvalidRhRouterError);
+    write_message(dir, "fail.js", payload)?;
 
-    {
-        let test = [1, 2, 3, 4, 5];
-        am::setup_readmemreply(&mut payload, &test);
-        let mut onfile = File::create(format!("{}/readmemreply.js", dir).as_str())?;
+    am::setup_pinmode(&mut payload, 26, 2);
+    write_message(dir, "pinmode.js", payload)?;
 
-        let v = serde_json::to_value(payload)?;
-        onfile.write(v.to_string().as_bytes())?;
-        println!("setup_readmemreply: {}", am::payload_size(&payload));
-    }
+    am::setup_readpin(&mut payload, 22);
+    write_message(dir, "readpin.js", payload)?;
 
-    // unsafe {
-    //     let test = [5, 4, 3, 2, 1];
-    //     am::setup_writemem(&mut mutmsg.payload, 5678, &test);
-    //     let mut onfile = File::create(format!("{}/writemem.js", dir).as_str())?;
-    //     let v = serde_json::to_value(mutmsg.payload.data.writemem)?;
-    //     onfile.write(v.to_string().as_bytes())?;
+    am::setup_readpinreply(&mut payload, 26, 1);
+    write_message(dir, "readpinreply.js", payload)?;
 
-    //     println!("setup_writemem: {}", am::payload_size(&mutmsg.payload));
-    // }
+    am::setup_writepin(&mut payload, 15, 1);
+    write_message(dir, "writepin.js", payload)?;
+
+    am::setup_readanalog(&mut payload, 27);
+    write_message(dir, "readanalog.js", payload)?;
+
+    am::setup_readanalogreply(&mut payload, 6, 500);
+    write_message(dir, "readanalogreply.js", payload)?;
+
+    am::setup_readmem(&mut payload, 1500, 75);
+    write_message(dir, "readmem.js", payload)?;
+
+    let test = [1, 2, 3, 4, 5];
+    am::setup_readmemreply(&mut payload, &test);
+    write_message(dir, "readmemreply.js", payload)?;
+
+    let test = [5, 4, 3, 2, 1];
+    am::setup_writemem(&mut payload, 5678, &test);
+    write_message(dir, "writemem.js", payload)?;
+
+    am::setup_readinfo(&mut payload);
+    write_message(dir, "readinfo.js", payload)?;
+
+    am::setup_readinforeply(&mut payload, 1.1, 5678, 5000, 5);
+    write_message(dir, "readinforeply.js", payload)?;
+
+    am::setup_readhumidity(&mut payload);
+    write_message(dir, "readhumidity.js", payload)?;
+
+    am::setup_readhumidityreply(&mut payload, 45.7);
+    write_message(dir, "readhumidityreply.js", payload)?;
+
+    am::setup_readtemperature(&mut payload);
+    write_message(dir, "readtemperature.js", payload)?;
+
+    am::setup_readtemperaturereply(&mut payload, 98.6);
+    write_message(dir, "readtemperaturereply.js", payload)?;
+
+    am::setup_readfield(&mut payload, 1);
+    write_message(dir, "readfield.js", payload)?;
+
+    am::setup_readfieldreply(&mut payload, 7, 77, 20, 4, "wat".as_bytes());
+    write_message(dir, "readfieldreply.js", payload)?;
 
     Ok(())
 }
 
-fn read_json_message_files(dir: &str) -> Result<bool, Box<dyn std::error::Error>> {
-    {
-        let mut mfile = File::open(format!("{}/writemem.js", dir).as_str())?;
-        let mut s = String::new();
-        mfile.read_to_string(&mut s)?;
-        println!("json input: {}", s);
-        let v: serde_json::Value = serde_json::from_str(s.as_str())?;
-        let p: am::Payload = serde_json::from_value(v)?;
-        println!("p: {:?} ", serde_json::to_value(p));
-        println!("");
-    }
-    {
-        let mut mfile = File::open(format!("{}/readmemreply.js", dir).as_str())?;
-        let mut s = String::new();
-        mfile.read_to_string(&mut s)?;
-        println!("json input: {}", s);
-        let v: serde_json::Value = serde_json::from_str(s.as_str())?;
-        let p: am::Payload = serde_json::from_value(v)?;
-        println!("p: {:?} ", serde_json::to_value(p));
-        println!("");
-    }
-    Ok(true)
-}
-
-unsafe fn read_msg_file(name: &str, msgbuf: &mut Msgbuf) -> Result<(), Box<dyn Error>> {
-    let mut mfile = File::open(name)?;
+unsafe fn read_msg_file_bin(
+    dir: &str,
+    name: &str,
+    msgbuf: &mut Msgbuf,
+) -> Result<(), Box<dyn Error>> {
+    let fname = format!("{}/{}.bin", dir, name);
+    let mut mfile = File::open(fname.as_str())?;
 
     println!("");
-    println!("reading: {}", name);
+    println!("reading: {}", fname);
 
     mfile.read(&mut msgbuf.buf)?;
 
@@ -347,7 +197,37 @@ unsafe fn read_msg_file(name: &str, msgbuf: &mut Msgbuf) -> Result<(), Box<dyn E
     Ok(())
 }
 
-unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
+unsafe fn read_msg_file_js(
+    dir: &str,
+    name: &str,
+    msgbuf: &mut Msgbuf,
+) -> Result<(), Box<dyn Error>> {
+    let fname = format!("{}/{}.js", dir, name);
+    println!("");
+    println!("reading: {}", fname);
+
+    let mut mfile = File::open(fname.as_str())?;
+
+    let mut s = String::new();
+    mfile.read_to_string(&mut s)?;
+    let v: serde_json::Value = serde_json::from_str(s.as_str())?;
+    let p: am::Payload = serde_json::from_value(v)?;
+
+    msgbuf.payload = p;
+
+    // for i in 0..msgbuf.buf.len() {
+    //     let c = msgbuf.buf[i];
+    //     println!("{} - {}", c, c as char);
+    // }
+    // am::print_payload(&msgbuf.payload);
+
+    Ok(())
+}
+
+unsafe fn read_message_files(
+    dir: &str,
+    read_msg_file: unsafe fn(&str, &str, &mut Msgbuf) -> Result<(), Box<dyn Error>>,
+) -> Result<bool, Box<dyn Error>> {
     // message with dummy payload.
     let mut mb = Msgbuf {
         payload: Payload {
@@ -356,14 +236,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         },
     };
 
-    read_msg_file(format!("{}/ack.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "ack", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtAck {
         println!("ack msg failed");
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/fail.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "fail", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtFail
         || mb.payload.data.failcode != ResultCode::RcInvalidRhRouterError as u8
@@ -372,7 +252,7 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/pinmode.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "pinmode", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtPinmode
         || mb.payload.data.pinmode.pin != 26
@@ -382,14 +262,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readpin.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readpin", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadpin || mb.payload.data.pin != 22 {
         println!("readpin msg failed");
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readpinreply.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readpinreply", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadpinreply
         || mb.payload.data.pinval.pin != 26
@@ -399,7 +279,7 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/writepin.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "writepin", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtWritepin
         || mb.payload.data.pinval.pin != 15
@@ -409,14 +289,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readanalog.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readanalog", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadanalog || mb.payload.data.pin != 27 {
         println!("readanalog msg failed");
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readanalogreply.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readanalogreply", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadanalogreply
         || mb.payload.data.analogpinval.pin != 6
@@ -426,7 +306,7 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readmem.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readmem", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadmem
         || mb.payload.data.readmem.address != 1500
@@ -436,7 +316,7 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readmemreply.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readmemreply", &mut mb)?;
     let testrm = [1, 2, 3, 4, 5];
 
     if mb.payload.data.readmemreply.length != 5 {
@@ -452,7 +332,7 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/writemem.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "writemem", &mut mb)?;
 
     let testwm = [5, 4, 3, 2, 1];
     if mb.payload.data.writemem.address != 5678
@@ -463,14 +343,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readinfo.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readinfo", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadinfo {
         println!("readinfo msg failed");
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readinforeply.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readinforeply", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadinforeply
         || (mb.payload.data.remoteinfo.protoversion - 1.1) > 0.00000001
@@ -482,14 +362,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readhumidity.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readhumidity", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadhumidity {
         println!("readhumidity msg failed");
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readhumidityreply.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readhumidityreply", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadhumidityreply
         || (mb.payload.data.f - 45.7) > 0.000001
@@ -498,17 +378,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readtemperature.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readtemperature", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadtemperature {
         println!("readtemperature msg failed");
         return Ok(false);
     }
 
-    read_msg_file(
-        format!("{}/readtemperaturereply.bin", dir).as_str(),
-        &mut mb,
-    )?;
+    read_msg_file(dir, "readtemperaturereply", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadtemperaturereply
         || (mb.payload.data.f - 98.6) > 0.000001
@@ -517,14 +394,14 @@ unsafe fn read_message_files(dir: &str) -> Result<bool, Box<dyn Error>> {
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readfield.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readfield", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadfield || mb.payload.data.readfield.index != 1 {
         println!("readfield msg failed");
         return Ok(false);
     }
 
-    read_msg_file(format!("{}/readfieldreply.bin", dir).as_str(), &mut mb)?;
+    read_msg_file(dir, "readfieldreply", &mut mb)?;
 
     if mb.payload.payload_type != PayloadType::PtReadfieldreply
         || mb.payload.data.readfieldreply.index != 7
