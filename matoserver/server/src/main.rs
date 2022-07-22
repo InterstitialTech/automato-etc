@@ -8,7 +8,7 @@ use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use automato::automatomsg as am;
 use config::Config;
-use data::ServerData;
+use data::{AutomatoMsg, ServerData};
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
 use serde_json;
@@ -170,7 +170,7 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
             let mut target = vec![];
             // elm_rs provides a macro for conveniently creating an Elm module with everything needed
             elm_rs::export!(
-                "Bindings",
+                "Payload",
                 &mut target,
                 am::RemoteInfo,
                 am::Pinval,
@@ -181,7 +181,8 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 am::WriteMemSerde,
                 am::ReadField,
                 am::ReadFieldReply,
-                am::PayloadEnum
+                am::PayloadEnum,
+                AutomatoMsg
             )
             .unwrap();
             let output = String::from_utf8(target).unwrap();

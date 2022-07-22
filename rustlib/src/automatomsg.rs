@@ -197,7 +197,7 @@ impl<'de> Deserialize<'de> for Writemem {
 impl Elm for Writemem {
     /// The name of the type in Elm.
     fn elm_type() -> String {
-        "WriteMem".to_string()
+        WriteMemSerde::elm_type()
     }
     /// The definition of the type in Elm. None for types already defined in Elm.
     fn elm_definition() -> Option<String> {

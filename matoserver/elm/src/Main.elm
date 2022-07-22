@@ -164,7 +164,7 @@ stateRoute : State -> SavedRoute
 stateRoute state =
     case state of
         AutomatoView mod ->
-            { route = AutomatoViewR (Data.getAutomatoIdVal mod.automatoinfo.id)
+            { route = AutomatoViewR mod.id
             , save = True
             }
 

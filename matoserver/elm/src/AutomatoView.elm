@@ -12,6 +12,7 @@ import Element.Events as EE
 import Element.Font as EF
 import Element.Input as EI
 import MsCommon as MS
+import Payload
 import Round as R
 import Set
 import TDict exposing (TDict)
@@ -29,7 +30,8 @@ type Msg
 
 
 type alias Model =
-    { automatoinfo : Data.AutomatoInfo
+    { automatoinfo : Payload.RemoteInfo
+    , id : Int
     }
 
 
@@ -44,9 +46,10 @@ headerStyle =
     [ EF.bold ]
 
 
-init : Time.Zone -> Data.AutomatoInfo -> Model
-init zone ai =
+init : Time.Zone -> Int -> Payload.RemoteInfo -> Model
+init zone id ai =
     { automatoinfo = ai
+    , id = id
     }
 
 

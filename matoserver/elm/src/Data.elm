@@ -1,4 +1,4 @@
-module Data exposing (AutomatoId(..), AutomatoInfo, ListAutomato, RemoteInfo, decodeListAutomato, decodeRemoteInfo, getAutomatoIdVal, makeAutomatoId)
+module Data exposing (AutomatoId(..), ListAutomato, decodeListAutomato, getAutomatoIdVal, makeAutomatoId)
 
 import Json.Decode as JD
 import Json.Encode as JE
@@ -11,21 +11,17 @@ type alias ListAutomato =
     }
 
 
-type alias RemoteInfo =
-    { protoversion : Float
-    , mac_address : String
-    , datalen : Int
-    , fieldcount : Int
-    }
 
-
-type alias AutomatoInfo =
-    { id : AutomatoId
-    , remoteinfo : RemoteInfo
-    }
-
-
-
+-- type alias RemoteInfo =
+--     { protoversion : Float
+--     , mac_address : String
+--     , datalen : Int
+--     , fieldcount : Int
+--     }
+-- type alias AutomatoInfo =
+--     { id : AutomatoId
+--     , remoteinfo : RemoteInfo
+--     }
 -------------------------------------------
 -- Id types.  They're all ints underneath.
 -------------------------------------------
@@ -59,16 +55,14 @@ decodeListAutomato =
         |> andMap (JD.field "id" JD.int |> JD.map makeAutomatoId)
 
 
-decodeRemoteInfo : JD.Decoder RemoteInfo
-decodeRemoteInfo =
-    JD.succeed RemoteInfo
-        |> andMap (JD.field "protoversion" JD.float)
-        |> andMap (JD.field "mac_address" JD.string)
-        |> andMap (JD.field "datalen" JD.int)
-        |> andMap (JD.field "fieldcount" JD.int)
 
-
-
+-- decodeRemoteInfo : JD.Decoder RemoteInfo
+-- decodeRemoteInfo =
+--     JD.succeed RemoteInfo
+--         |> andMap (JD.field "protoversion" JD.float)
+--         |> andMap (JD.field "mac_address" JD.string)
+--         |> andMap (JD.field "datalen" JD.int)
+--         |> andMap (JD.field "fieldcount" JD.int)
 -- |> andMap (JD.field "name" JD.string)
 -- decodeProject : JD.Decoder Project
 -- decodeProject =
