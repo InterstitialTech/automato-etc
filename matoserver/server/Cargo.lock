@@ -443,6 +443,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "automato"
 version = "0.1.0"
 dependencies = [
+ "elm_rs",
  "num-derive",
  "num-traits",
  "serde",
@@ -830,6 +831,27 @@ name = "either"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
+
+[[package]]
+name = "elm_rs"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c27189e042c5340f3db473630830a37bb48f70a9bf8479f7f3f2540b1ac494fc"
+dependencies = [
+ "elm_rs_derive",
+]
+
+[[package]]
+name = "elm_rs_derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "506a23c7762841807ee1a453d85904cbf19eecb007cad5bb124eb356791fc1eb"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "email"
@@ -1494,6 +1516,7 @@ dependencies = [
  "clap",
  "crypto-hash",
  "either",
+ "elm_rs",
  "env_logger",
  "futures 0.1.31",
  "json",

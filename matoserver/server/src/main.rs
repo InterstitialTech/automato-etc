@@ -6,6 +6,7 @@ mod messages;
 mod util;
 use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
+use automato::automatomsg as am;
 use config::Config;
 use data::ServerData;
 use log::{error, info};
@@ -155,7 +156,49 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 .default_value("115200")
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("writeelmbindings")
+                .long("writeelmbindings")
+                .value_name("FILE")
+                .help("Write elmbindings file")
+                .takes_value(true),
+        )
         .get_matches();
+
+    match matches.value_of("writeelmbindings") {
+        Some(exportfile) => {
+            let mut target = vec![];
+            // elm_rs provides a macro for conveniently creating an Elm module with everything needed
+            elm_rs::export!(
+                "Bindings",
+                &mut target,
+                am::RemoteInfo,
+                am::Pinval,
+                am::AnalogPinval,
+                am::Pinmode,
+                am::Readmem,
+                am::ReadmemReply,
+                am::WriteMemSerde,
+                am::ReadField,
+                am::ReadFieldReply,
+                am::PayloadEnum
+            )
+            .unwrap();
+            let output = String::from_utf8(target).unwrap();
+            println!("{}", output);
+
+            // util::write_string(exportfile, toml::to_string_pretty(&config)?.as_str())?;
+
+            // util::write_string(
+            //   exportfile,
+            //   serde_json::to_string_pretty(&sqldata::export_db(config.db.as_path())?)?.as_str(),
+            // )?;
+
+            return Ok(());
+        }
+
+        None => (),
+    }
 
     match matches.value_of("writeconfig") {
         Some(exportfile) => {

@@ -1,8 +1,10 @@
+use elm_rs::{Elm, ElmJson};
 use num_derive::{FromPrimitive, ToPrimitive};
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 use std::mem::size_of;
+
 // --------------------------------------------------------
 // message structs.
 // --------------------------------------------------------
@@ -31,7 +33,7 @@ pub enum PayloadType {
     PtReadfieldreply = 18,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct RemoteInfo {
@@ -41,7 +43,7 @@ pub struct RemoteInfo {
     pub fieldcount: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinval {
@@ -49,7 +51,7 @@ pub struct Pinval {
     pub state: u8,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct AnalogPinval {
@@ -57,7 +59,7 @@ pub struct AnalogPinval {
     pub state: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinmode {
@@ -65,7 +67,7 @@ pub struct Pinmode {
     pub mode: u8,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Readmem {
@@ -80,7 +82,7 @@ const MAX_WRITEMEM: usize = 247;
 // #define MAX_READMEM RH_RF95_MAX_MESSAGE_LEN - sizeof(u8) - sizeof(u8)
 const MAX_READMEM: usize = 249;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadmemReply {
@@ -147,7 +149,7 @@ pub struct Writemem {
     pub data: [u8; MAX_WRITEMEM],
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Elm, ElmJson)]
 pub struct WriteMemSerde {
     pub address: u16,
     pub data: Vec<u8>,
@@ -192,14 +194,44 @@ impl<'de> Deserialize<'de> for Writemem {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+impl Elm for Writemem {
+    /// The name of the type in Elm.
+    fn elm_type() -> String {
+        "WriteMem".to_string()
+    }
+    /// The definition of the type in Elm. None for types already defined in Elm.
+    fn elm_definition() -> Option<String> {
+        WriteMemSerde::elm_definition()
+    }
+}
+
+impl ElmJson for Writemem {
+    /// The name of the decoder in Elm.
+    fn decoder_type() -> String {
+        WriteMemSerde::decoder_type()
+    }
+    /// The decoder function in Elm. None for decoders in Json.Decode.
+    fn decoder_definition() -> Option<String> {
+        WriteMemSerde::decoder_definition()
+    }
+    /// The name of the encoder in Elm.
+    fn encoder_type() -> String {
+        WriteMemSerde::encoder_type()
+    }
+    /// The encoder function in Elm. None for encoders in Json.Encode.
+    fn encoder_definition() -> Option<String> {
+        WriteMemSerde::encoder_definition()
+    }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadField {
     pub index: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadFieldReply {
@@ -237,7 +269,7 @@ pub struct Payload {
     pub data: PayloadData,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 pub enum PayloadEnum {
     PeAck,
     PeFail(u8),

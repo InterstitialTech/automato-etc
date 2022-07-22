@@ -1,5 +1,7 @@
 use crate::Config;
 use automato::automatomsg as am;
+// use elm_rs::{Elm, ElmJson};
+use elm_rs::{Elm, ElmJson};
 use serde_derive::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
@@ -16,7 +18,7 @@ pub struct ListAutomato {
 //     pub info: am::RemoteInfo,
 // }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Elm, ElmJson)]
 pub struct AutomatoMsg {
     pub id: u8,
     pub message: am::PayloadEnum,
