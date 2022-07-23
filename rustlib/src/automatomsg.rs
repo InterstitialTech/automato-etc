@@ -3,8 +3,9 @@ use num_derive::{FromPrimitive, ToPrimitive};
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
+use serial;
+use std::io::{Read, Write};
 use std::mem::size_of;
-
 // --------------------------------------------------------
 // message structs.
 // --------------------------------------------------------
@@ -744,4 +745,44 @@ pub unsafe fn print_payload(p: &Payload) {
             println!("");
         }
     }
+}
+
+pub unsafe fn write_message(
+    port: &mut serial::SystemPort,
+    msg: &Msgbuf,
+    toid: u8,
+) -> Result<(), serial::Error> {
+    let sz = payload_size(&msg.payload);
+
+    port.write(&['m' as u8])?;
+    port.write(&[toid as u8])?;
+    port.write(&[sz as u8])?;
+    port.write(&msg.buf[0..sz + 1])?;
+
+    Ok(())
+}
+
+pub unsafe fn read_message(
+    port: &mut serial::SystemPort,
+    msg: &mut Msgbuf,
+    fromid: &mut u8,
+) -> Result<bool, serial::Error> {
+    let mut monobuf = [0; 1];
+
+    port.read_exact(&mut monobuf)?;
+    if monobuf[0] as char != 'm' {
+        return Ok(false);
+    }
+
+    port.read_exact(&mut monobuf)?;
+    *fromid = monobuf[0];
+
+    port.read_exact(&mut monobuf)?;
+    let sz = monobuf[0] as usize;
+
+    if sz > 0 {
+        port.read_exact(&mut msg.buf[0..sz])?;
+    }
+
+    Ok(true)
 }
