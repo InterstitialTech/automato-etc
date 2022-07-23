@@ -13,7 +13,7 @@ use std::time::Duration;
 pub fn public_interface(
     data: &ServerData,
     msg: PublicMessage,
-) -> Result<ServerResponse, Box<dyn Error>> {
+) -> Result<ServerResponse, Box<dyn Error + '_>> {
     info!("process_public_json, what={}", msg.what.as_str());
     match msg.what.as_str() {
         "GetAutomatoList" => Ok(ServerResponse {
@@ -31,7 +31,7 @@ pub fn public_interface(
 
             unsafe {
                 mb.payload = am::Payload::from(am.message);
-                let port = data.port.lock()?;
+                let mut port = data.port.lock()?;
                 am::write_message(&mut port, &mb, am.id)?;
 
                 let mut fromid: u8 = 0;
