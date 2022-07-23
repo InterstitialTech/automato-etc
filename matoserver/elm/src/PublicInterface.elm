@@ -46,7 +46,7 @@ encodeSendMsg sm =
 
         SendAutomatoMsg msg ->
             JE.object
-                [ ( "what", JE.string "SendAutomatoMsg" )
+                [ ( "what", JE.string "AutomatoMsg" )
                 , ( "data", Payload.automatoMsgEncoder msg )
                 ]
 

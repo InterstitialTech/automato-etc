@@ -31,6 +31,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import LocalStorage as LS
+import Payload
 import PublicInterface as PI
 import Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
 import ShowMessage
@@ -156,7 +157,12 @@ routeState model route =
 
         AutomatoViewR id ->
             ( (displayMessageDialog model "loading automato info").state
-            , sendPIMsg model.location (PI.GetAutomatoInfo (Data.makeAutomatoId id))
+            , sendPIMsg model.location
+                (PI.SendAutomatoMsg
+                    { id = id
+                    , message = Payload.PeReadinfo
+                    }
+                )
             )
 
 
@@ -517,6 +523,14 @@ actualupdate msg model =
                             , Cmd.none
                             )
 
+                        PI.AutomatoMsg am ->
+                            case model.state of
+                                AutomatoView av ->
+                                    ( model, Cmd.none )
+
+                                _ ->
+                                    ( model, Cmd.none )
+
         ( DisplayMessageMsg bm, DisplayMessage bs prevstate ) ->
             case GD.update bm bs of
                 GD.Dialog nmod ->
@@ -547,7 +561,11 @@ actualupdate msg model =
             case cmd of
                 AutomatoListing.Selected id ->
                     ( { model | state = AutomatoListing nm }
-                    , sendPIMsg model.location <| PI.GetAutomatoInfo id
+                    , sendPIMsg model.location <|
+                        PI.SendAutomatoMsg
+                            { id = Data.getAutomatoIdVal id
+                            , message = Payload.PeReadinfo
+                            }
                     )
 
                 -- AutomatoListing.New ->

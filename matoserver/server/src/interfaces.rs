@@ -17,7 +17,7 @@ pub fn public_interface(
             what: "automatos".to_string(),
             content: serde_json::to_value(data.config.automato_ids.clone())?,
         }),
-        "GetAutomatoInfo" => {
+        "AutomatoMsg" => {
             let msgdata = Option::ok_or(msg.data.as_ref(), "malformed json data")?;
             let am: AutomatoMsg = serde_json::from_value(msgdata.clone())?;
 
