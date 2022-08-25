@@ -528,9 +528,12 @@ actualupdate msg model =
                                 _ =
                                     Debug.log "PI.AutomatoMsg" am
                             in
-                            case model.state of
-                                AutomatoView av ->
-                                    ( model, Cmd.none )
+                            case ( model.state, am.message ) of
+                                ( AutomatoView av, _ ) ->
+                                    handleAutomatoView model (AutomatoView.onAutomatoMsg am av)
+
+                                ( _, Payload.PeReadinforeply info ) ->
+                                    handleAutomatoView model (AutomatoView.init am.id info)
 
                                 _ ->
                                     ( model, Cmd.none )
@@ -620,6 +623,11 @@ handleAutomatoView model ( nm, cmd ) =
 
         AutomatoView.ShowError e ->
             ( displayMessageDialog { model | state = AutomatoView nm } e, Cmd.none )
+
+        AutomatoView.SendAutomatoMsg am ->
+            ( { model | state = AutomatoView nm }
+            , sendPIMsg model.location <| PI.SendAutomatoMsg am
+            )
 
         AutomatoView.None ->
             ( { model | state = AutomatoView nm }, Cmd.none )
