@@ -66,6 +66,10 @@ serverResponseDecoder =
                             |> JD.map (List.map (\id -> { id = Data.makeAutomatoId id }))
                             |> JD.map AutomatoList
 
+                    "automatomsg" ->
+                        JD.at [ "content" ] Payload.automatoMsgDecoder
+                            |> JD.map AutomatoMsg
+
                     wat ->
                         JD.succeed
                             (ServerError ("invalid 'what' from server: " ++ wat))

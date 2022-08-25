@@ -27,6 +27,8 @@ pub fn public_interface(
                 buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
             };
 
+            println!("automatomsg: {:?}", am);
+
             let mut retmsg = mb.clone();
 
             unsafe {
@@ -45,19 +47,32 @@ pub fn public_interface(
                         //     println!("{} - {}", c, c as char);
                         // }
                         am::print_payload(&retmsg.payload);
+
+                        let rm = AutomatoMsg {
+                            id: fromid,
+                            message: am::PayloadEnum::from(retmsg.payload),
+                        };
+                        Ok(ServerResponse {
+                            what: "automatomsg".to_string(),
+                            content: serde_json::to_value(rm)?,
+                        })
                     }
                     Ok(false) => {
                         println!("here");
+                        Ok(ServerResponse {
+                            what: "here".to_string(),
+                            content: serde_json::Value::Null,
+                        })
                     }
                     Err(e) => {
                         println!("error: {:?}", e);
+                        Ok(ServerResponse {
+                            what: "err".to_string(),
+                            content: serde_json::Value::Null,
+                        })
                     }
                 }
             }
-            Ok(ServerResponse {
-                what: "unimplemented".to_string(),
-                content: serde_json::Value::Null,
-            })
         }
         wat => Err(Box::new(simple_error::SimpleError::new(format!(
             "invalid 'what' code:'{}'",

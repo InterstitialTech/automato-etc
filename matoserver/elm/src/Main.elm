@@ -524,6 +524,10 @@ actualupdate msg model =
                             )
 
                         PI.AutomatoMsg am ->
+                            let
+                                _ =
+                                    Debug.log "PI.AutomatoMsg" am
+                            in
                             case model.state of
                                 AutomatoView av ->
                                     ( model, Cmd.none )
