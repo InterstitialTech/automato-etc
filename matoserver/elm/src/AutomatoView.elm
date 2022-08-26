@@ -66,7 +66,13 @@ onAutomatoMsg : AutomatoMsg -> Model -> ( Model, Command )
 onAutomatoMsg am model =
     case am.message of
         Payload.PeReadfieldreply info ->
-            ( { model | fields = Dict.insert info.index info model.fields }, None )
+            ( { model | fields = Dict.insert info.index info model.fields }
+            , if info.index < model.automatoinfo.fieldcount - 1 then
+                SendAutomatoMsg { id = model.id, message = Payload.PeReadfield { index = info.index + 1 } }
+
+              else
+                None
+            )
 
         _ ->
             ( model, None )
@@ -86,7 +92,7 @@ view size zone model =
         , E.text <| "macAddress: " ++ String.fromInt model.automatoinfo.macAddress
         , E.text <| "datalen: " ++ String.fromInt model.automatoinfo.datalen
         , E.text <| "fieldcount: " ++ String.fromInt model.automatoinfo.fieldcount
-        , E.column [ E.spacing 15 ]
+        , E.column [ E.padding 15, E.spacing 15 ]
             (model.fields
                 |> Dict.values
                 |> List.map
