@@ -32,7 +32,10 @@ type Msg
 type alias Model =
     { automatoinfo : Payload.RemoteInfo
     , id : Int
+    , temperature : Maybe Float
+    , humidity : Maybe Float
     , fields : Dict Int Payload.ReadFieldReply
+    , pendingMsgs : List AutomatoMsg
     }
 
 
@@ -50,32 +53,68 @@ headerStyle =
 
 init : Int -> Payload.RemoteInfo -> ( Model, Command )
 init id ai =
-    ( { automatoinfo = ai
-      , id = id
-      , fields = Dict.empty
-      }
-    , if ai.fieldcount > 0 then
-        SendAutomatoMsg { id = id, message = Payload.PeReadfield { index = 0 } }
+    let
+        pendingMsgs =
+            [ { id = id, message = Payload.PeReadtemperature }
+            , { id = id, message = Payload.PeReadhumidity }
+            ]
+                ++ (List.range 0 (ai.fieldcount - 1)
+                        |> List.map
+                            (\i ->
+                                { id = id, message = Payload.PeReadfield { index = i } }
+                            )
+                   )
 
-      else
-        None
+        model =
+            { automatoinfo = ai
+            , id = id
+            , temperature = Nothing
+            , humidity = Nothing
+            , fields = Dict.empty
+            , pendingMsgs = List.drop 1 pendingMsgs
+            }
+    in
+    ( model
+    , case List.head pendingMsgs of
+        Just msg ->
+            SendAutomatoMsg msg
+
+        Nothing ->
+            None
     )
 
 
 onAutomatoMsg : AutomatoMsg -> Model -> ( Model, Command )
 onAutomatoMsg am model =
-    case am.message of
-        Payload.PeReadfieldreply info ->
-            ( { model | fields = Dict.insert info.index info model.fields }
-            , if info.index < model.automatoinfo.fieldcount - 1 then
-                SendAutomatoMsg { id = model.id, message = Payload.PeReadfield { index = info.index + 1 } }
+    let
+        nm =
+            case am.message of
+                Payload.PeReadfieldreply info ->
+                    { model
+                        | fields = Dict.insert info.index info model.fields
+                    }
 
-              else
-                None
-            )
+                Payload.PeReadtemperaturereply f ->
+                    { model
+                        | temperature = Just f
+                    }
 
-        _ ->
-            ( model, None )
+                Payload.PeReadhumidityreply f ->
+                    { model
+                        | humidity = Just f
+                    }
+
+                _ ->
+                    model
+    in
+    ( { nm | pendingMsgs = List.drop 1 model.pendingMsgs }
+    , case List.head model.pendingMsgs of
+        Just msg ->
+            SendAutomatoMsg msg
+
+        Nothing ->
+            None
+    )
 
 
 view : Util.Size -> Time.Zone -> Model -> Element Msg
@@ -92,6 +131,24 @@ view size zone model =
         , E.text <| "macAddress: " ++ String.fromInt model.automatoinfo.macAddress
         , E.text <| "datalen: " ++ String.fromInt model.automatoinfo.datalen
         , E.text <| "fieldcount: " ++ String.fromInt model.automatoinfo.fieldcount
+        , E.text <|
+            "temperature: "
+                ++ (case model.temperature of
+                        Just f ->
+                            String.fromFloat f
+
+                        Nothing ->
+                            "?"
+                   )
+        , E.text <|
+            "humidity: "
+                ++ (case model.humidity of
+                        Just f ->
+                            String.fromFloat f
+
+                        Nothing ->
+                            "?"
+                   )
         , E.column [ E.padding 15, E.spacing 15 ]
             (model.fields
                 |> Dict.values
