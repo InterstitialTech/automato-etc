@@ -35,6 +35,19 @@ pub enum PayloadType {
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
+pub enum FieldFormat {
+    FfChar = 0,
+    FfFloat = 1,
+    FfUint8 = 2,
+    FfUint16 = 3,
+    FfUint32 = 4,
+    FfInt8 = 5,
+    FfInt16 = 6,
+    FfInt32 = 7,
+    FfOther = 8,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct RemoteInfo {
@@ -607,14 +620,14 @@ pub fn setup_readfieldreply(
     index: u16,
     offset: u16,
     length: u8,
-    format: u8,
+    format: FieldFormat,
     name: &[u8],
 ) {
     p.payload_type = PayloadType::PtReadfieldreply;
     p.data.readfieldreply.index = index;
     p.data.readfieldreply.offset = offset;
     p.data.readfieldreply.length = length;
-    p.data.readfieldreply.format = format;
+    p.data.readfieldreply.format = format as u8;
     unsafe {
         p.data.readfieldreply.name[0..name.len()].copy_from_slice(&name);
     }
@@ -737,7 +750,7 @@ pub unsafe fn print_payload(p: &Payload) {
             println!("index: {}", { p.data.readfieldreply.index });
             println!("offset: {}", { p.data.readfieldreply.offset });
             println!("length: {}", p.data.readfieldreply.length);
-            println!("format: {}", p.data.readfieldreply.format);
+            println!("format: {:?}", p.data.readfieldreply.format);
             print!("name: ");
             for i in 0..p.data.readfieldreply.name.len() {
                 print!("{}", p.data.readfieldreply.name[i] as char);

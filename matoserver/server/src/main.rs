@@ -188,6 +188,8 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
             let output = String::from_utf8(target).unwrap();
             println!("{}", output);
 
+            util::write_string(exportfile, output.as_str())?;
+
             // util::write_string(exportfile, toml::to_string_pretty(&config)?.as_str())?;
 
             // util::write_string(

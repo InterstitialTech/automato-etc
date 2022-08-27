@@ -29,12 +29,18 @@ type Msg
     | Noop
 
 
+type alias Field =
+    { rfr : Payload.ReadFieldReply
+    , value : Maybe Data.FieldValue
+    }
+
+
 type alias Model =
     { automatoinfo : Payload.RemoteInfo
     , id : Int
     , temperature : Maybe Float
     , humidity : Maybe Float
-    , fields : Dict Int Payload.ReadFieldReply
+    , fields : Dict Int Field
     , pendingMsgs : List AutomatoMsg
     }
 
@@ -84,15 +90,32 @@ init id ai =
     )
 
 
+readField : Payload.ReadFieldReply -> Payload.Readmem
+readField rfr =
+    { address = rfr.offset
+    , length = rfr.length
+    }
+
+
 onAutomatoMsg : AutomatoMsg -> Model -> ( Model, Command )
 onAutomatoMsg am model =
     let
         nm =
             case am.message of
-                Payload.PeReadfieldreply info ->
+                Payload.PeReadfieldreply rfr ->
                     { model
-                        | fields = Dict.insert info.index info model.fields
+                        | fields = Dict.insert rfr.index { rfr = rfr, value = Nothing } model.fields
+                        , pendingMsgs =
+                            model.pendingMsgs
+                                ++ [ { id = model.id, message = Payload.PeReadmem <| readField rfr } ]
                     }
+
+                Payload.PeReadmemreply rmr ->
+                    let
+                        _ =
+                            Debug.log "rmr: " rmr
+                    in
+                    model
 
                 Payload.PeReadtemperaturereply f ->
                     { model
@@ -107,8 +130,8 @@ onAutomatoMsg am model =
                 _ ->
                     model
     in
-    ( { nm | pendingMsgs = List.drop 1 model.pendingMsgs }
-    , case List.head model.pendingMsgs of
+    ( { nm | pendingMsgs = List.drop 1 nm.pendingMsgs }
+    , case List.head nm.pendingMsgs of
         Just msg ->
             SendAutomatoMsg msg
 
@@ -155,11 +178,11 @@ view size zone model =
                 |> List.map
                     (\fld ->
                         E.column []
-                            [ E.text <| "index" ++ String.fromInt fld.index
-                            , E.text <| "offset" ++ String.fromInt fld.offset
-                            , E.text <| "length" ++ String.fromInt fld.length
-                            , E.text <| "format" ++ String.fromInt fld.format
-                            , E.text <| "name" ++ String.fromList (List.map Char.fromCode fld.name)
+                            [ E.text <| "index" ++ String.fromInt fld.rfr.index
+                            , E.text <| "offset" ++ String.fromInt fld.rfr.offset
+                            , E.text <| "length" ++ String.fromInt fld.rfr.length
+                            , E.text <| "format" ++ String.fromInt fld.rfr.format
+                            , E.text <| "name" ++ String.fromList (List.map Char.fromCode fld.rfr.name)
                             ]
                     )
             )

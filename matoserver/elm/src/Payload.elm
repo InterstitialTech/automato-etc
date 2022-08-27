@@ -371,4 +371,3 @@ automatoMsgDecoder =
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "message" (payloadEnumDecoder)))
 
 
-
