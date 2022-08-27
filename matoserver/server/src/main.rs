@@ -178,7 +178,7 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 am::Pinmode,
                 am::Readmem,
                 am::ReadmemReply,
-                am::WriteMemSerde,
+                am::Writemem,
                 am::ReadField,
                 am::ReadFieldReply,
                 am::PayloadEnum,

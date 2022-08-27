@@ -141,23 +141,20 @@ readmemDecoder =
 
 
 type alias ReadmemReply =
-    { length : Int
-    , data : List (Int)
+    { data : List (Int)
     }
 
 
 readmemReplyEncoder : ReadmemReply -> Json.Encode.Value
 readmemReplyEncoder struct =
     Json.Encode.object
-        [ ( "length", (Json.Encode.int) struct.length )
-        , ( "data", (Json.Encode.list (Json.Encode.int)) struct.data )
+        [ ( "data", (Json.Encode.list (Json.Encode.int)) struct.data )
         ]
 
 
 readmemReplyDecoder : Json.Decode.Decoder ReadmemReply
 readmemReplyDecoder =
     Json.Decode.succeed ReadmemReply
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "length" (Json.Decode.int)))
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "data" (Json.Decode.list (Json.Decode.int))))
 
 

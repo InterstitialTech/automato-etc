@@ -50,12 +50,16 @@ void setup()
 
   on = true;
 
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A6, INPUT);
-  pinMode(A7, INPUT);
+  // pinMode(A0, INPUT);
+  // pinMode(A1, INPUT);
+  // pinMode(A6, INPUT);
+  // pinMode(A7, INPUT);
 
   loops = 0;
+
+  strcpy(serverdata.name, "test 1 2 3");
+  serverdata.targettemp = 42.0;
+ 
 }
 
 void loop()

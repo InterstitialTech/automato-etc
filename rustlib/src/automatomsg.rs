@@ -96,147 +96,152 @@ const MAX_WRITEMEM: usize = 247;
 // #define MAX_READMEM RH_RF95_MAX_MESSAGE_LEN - sizeof(u8) - sizeof(u8)
 const MAX_READMEM: usize = 249;
 
-#[derive(Clone, Copy, Debug, Elm, ElmJson)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
-pub struct ReadmemReply {
+pub struct ReadmemReplyUnion {
     pub length: u8,
     pub data: [u8; MAX_READMEM],
 }
 
-impl Serialize for ReadmemReply {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.length as usize))?;
-        let mut count = self.length;
-        for d in self.data {
-            if count > 0 {
-                seq.serialize_element(&d)?;
-            } else {
-                break;
-            }
-            count = count - 1;
-        }
-        seq.end()
-    }
+#[derive(Clone, Debug, Elm, ElmJson, Serialize, Deserialize)]
+pub struct ReadmemReply {
+    pub data: Vec<u8>,
 }
 
-impl<'de> Deserialize<'de> for ReadmemReply {
-    fn deserialize<D>(deserializer: D) -> Result<ReadmemReply, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // not the most efficient!  but simpler than implementing a whole deserializer.
-        let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
+// impl Serialize for ReadmemReply {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let mut seq = serializer.serialize_seq(Some(self.length as usize))?;
+//         let mut count = self.length;
+//         for d in self.data {
+//             if count > 0 {
+//                 seq.serialize_element(&d)?;
+//             } else {
+//                 break;
+//             }
+//             count = count - 1;
+//         }
+//         seq.end()
+//     }
+// }
 
-        println!("vecu8: {:?}", vecu8);
+// impl<'de> Deserialize<'de> for ReadmemReply {
+//     fn deserialize<D>(deserializer: D) -> Result<ReadmemReply, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         // not the most efficient!  but simpler than implementing a whole deserializer.
+//         let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
 
-        let len = vecu8.len();
+//         println!("vecu8: {:?}", vecu8);
 
-        vecu8.truncate(MAX_READMEM);
+//         let len = vecu8.len();
 
-        for _ in vecu8.len()..MAX_READMEM {
-            vecu8.push(0 as u8);
-        }
+//         vecu8.truncate(MAX_READMEM);
 
-        Ok(ReadmemReply {
-            length: len as u8,
-            data: vecu8.try_into().unwrap_or_else(|v: Vec<u8>| {
-                panic!(
-                    "Expected a Vec of length {} but it was {}",
-                    MAX_READMEM,
-                    v.len()
-                )
-            }),
-        })
-    }
-}
+//         for _ in vecu8.len()..MAX_READMEM {
+//             vecu8.push(0 as u8);
+//         }
+
+//         Ok(ReadmemReply {
+//             length: len as u8,
+//             data: vecu8.try_into().unwrap_or_else(|v: Vec<u8>| {
+//                 panic!(
+//                     "Expected a Vec of length {} but it was {}",
+//                     MAX_READMEM,
+//                     v.len()
+//                 )
+//             }),
+//         })
+//     }
+// }
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
-pub struct Writemem {
+pub struct WritememUnion {
     pub address: u16,
     pub length: u8,
     pub data: [u8; MAX_WRITEMEM],
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Elm, ElmJson)]
-pub struct WriteMemSerde {
+pub struct Writemem {
     pub address: u16,
     pub data: Vec<u8>,
 }
 
-impl Serialize for Writemem {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let wm = WriteMemSerde {
-            address: self.address,
-            data: self.data[0..self.length as usize].to_vec(),
-        };
-        wm.serialize(serializer)
-    }
-}
+// impl Serialize for Writemem {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let wm = WriteMemSerde {
+//             address: self.address,
+//             data: self.data[0..self.length as usize].to_vec(),
+//         };
+//         wm.serialize(serializer)
+//     }
+// }
 
-impl<'de> Deserialize<'de> for Writemem {
-    fn deserialize<D>(deserializer: D) -> Result<Writemem, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let wm: WriteMemSerde = WriteMemSerde::deserialize(deserializer)?;
+// impl<'de> Deserialize<'de> for Writemem {
+//     fn deserialize<D>(deserializer: D) -> Result<Writemem, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         let wm: WriteMemSerde = WriteMemSerde::deserialize(deserializer)?;
 
-        println!("reading WriteMemSerde: {:?}", wm);
+//         println!("reading WriteMemSerde: {:?}", wm);
 
-        let mut w = Writemem {
-            address: wm.address,
-            length: wm.data.len() as u8,
-            data: [0; MAX_WRITEMEM],
-        };
+//         let mut w = Writemem {
+//             address: wm.address,
+//             length: wm.data.len() as u8,
+//             data: [0; MAX_WRITEMEM],
+//         };
 
-        // copy in data.
-        let mut toidx = 0;
-        for x in wm.data {
-            w.data[toidx] = x;
-            toidx = toidx + 1;
-        }
+//         // copy in data.
+//         let mut toidx = 0;
+//         for x in wm.data {
+//             w.data[toidx] = x;
+//             toidx = toidx + 1;
+//         }
 
-        Ok(w)
-    }
-}
+//         Ok(w)
+//     }
+// }
 
-impl Elm for Writemem {
-    /// The name of the type in Elm.
-    fn elm_type() -> String {
-        WriteMemSerde::elm_type()
-    }
-    /// The definition of the type in Elm. None for types already defined in Elm.
-    fn elm_definition() -> Option<String> {
-        WriteMemSerde::elm_definition()
-    }
-}
+// impl Elm for Writemem {
+//     /// The name of the type in Elm.
+//     fn elm_type() -> String {
+//         WriteMemSerde::elm_type()
+//     }
+//     /// The definition of the type in Elm. None for types already defined in Elm.
+//     fn elm_definition() -> Option<String> {
+//         WriteMemSerde::elm_definition()
+//     }
+// }
 
-impl ElmJson for Writemem {
-    /// The name of the decoder in Elm.
-    fn decoder_type() -> String {
-        WriteMemSerde::decoder_type()
-    }
-    /// The decoder function in Elm. None for decoders in Json.Decode.
-    fn decoder_definition() -> Option<String> {
-        WriteMemSerde::decoder_definition()
-    }
-    /// The name of the encoder in Elm.
-    fn encoder_type() -> String {
-        WriteMemSerde::encoder_type()
-    }
-    /// The encoder function in Elm. None for encoders in Json.Encode.
-    fn encoder_definition() -> Option<String> {
-        WriteMemSerde::encoder_definition()
-    }
-}
+// impl ElmJson for Writemem {
+//     /// The name of the decoder in Elm.
+//     fn decoder_type() -> String {
+//         WriteMemSerde::decoder_type()
+//     }
+//     /// The decoder function in Elm. None for decoders in Json.Decode.
+//     fn decoder_definition() -> Option<String> {
+//         WriteMemSerde::decoder_definition()
+//     }
+//     /// The name of the encoder in Elm.
+//     fn encoder_type() -> String {
+//         WriteMemSerde::encoder_type()
+//     }
+//     /// The encoder function in Elm. None for encoders in Json.Encode.
+//     fn encoder_definition() -> Option<String> {
+//         WriteMemSerde::encoder_definition()
+//     }
+// }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
@@ -264,8 +269,8 @@ pub union PayloadData {
     pub pinmode: Pinmode,
     pub analogpinval: AnalogPinval,
     pub readmem: Readmem,
-    pub readmemreply: ReadmemReply,
-    pub writemem: Writemem,
+    pub readmemreply: ReadmemReplyUnion,
+    pub writemem: WritememUnion,
     pub remoteinfo: RemoteInfo,
     pub readfield: ReadField,
     pub readfieldreply: ReadFieldReply,
@@ -283,7 +288,7 @@ pub struct Payload {
     pub data: PayloadData,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
+#[derive(Clone, Serialize, Deserialize, Debug, Elm, ElmJson)]
 pub enum PayloadEnum {
     PeAck,
     PeFail(u8),
@@ -306,7 +311,7 @@ pub enum PayloadEnum {
     PeReadfieldreply(ReadFieldReply),
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct PayloadSerde {
     pub payload: PayloadEnum,
 }
@@ -327,9 +332,22 @@ impl From<Payload> for PayloadEnum {
                 }
                 PayloadType::PtReadmem => PayloadEnum::PeReadmem(payload.data.readmem),
                 PayloadType::PtReadmemreply => {
-                    PayloadEnum::PeReadmemreply(payload.data.readmemreply)
+                    let rmr = ReadmemReply {
+                        data: payload.data.readmemreply.data
+                            [0..payload.data.readmemreply.length as usize]
+                            .to_vec(),
+                    };
+                    PayloadEnum::PeReadmemreply(rmr)
                 }
-                PayloadType::PtWritemem => PayloadEnum::PeWritemem(payload.data.writemem),
+                PayloadType::PtWritemem => {
+                    let wm = Writemem {
+                        address: payload.data.writemem.address,
+                        data: payload.data.writemem.data[0..payload.data.writemem.length as usize]
+                            .to_vec(),
+                    };
+                    PayloadEnum::PeWritemem(wm)
+                }
+                // PayloadEnum::PeWritemem(payload.data.writemem),
                 PayloadType::PtReadinfo => PayloadEnum::PeReadinfo,
                 PayloadType::PtReadinforeply => {
                     PayloadEnum::PeReadinforeply(payload.data.remoteinfo)
@@ -394,11 +412,37 @@ impl From<PayloadEnum> for Payload {
             }
             PayloadEnum::PeReadmemreply(readmemreply) => {
                 payload.payload_type = PayloadType::PtReadmemreply;
-                payload.data.readmemreply = readmemreply
+                let mut r = ReadmemReplyUnion {
+                    length: readmemreply.data.len() as u8,
+                    data: [0; MAX_READMEM],
+                };
+                // copy in data.
+                let mut toidx = 0;
+                for x in readmemreply.data {
+                    r.data[toidx] = x;
+                    toidx = toidx + 1;
+                }
+                payload.data.readmemreply = r
             }
-            PayloadEnum::PeWritemem(writemem) => {
+            PayloadEnum::PeWritemem(writemem) =>
+            //   {
+            //     payload.payload_type = PayloadType::PtWritemem;
+            //     payload.data.writemem = writemem
+            // }
+            {
                 payload.payload_type = PayloadType::PtWritemem;
-                payload.data.writemem = writemem
+                let mut w = WritememUnion {
+                    address: writemem.address,
+                    length: writemem.data.len() as u8,
+                    data: [0; MAX_WRITEMEM],
+                };
+                // copy in data.
+                let mut toidx = 0;
+                for x in writemem.data {
+                    w.data[toidx] = x;
+                    toidx = toidx + 1;
+                }
+                payload.data.writemem = w
             }
             PayloadEnum::PeReadinfo => {
                 payload.payload_type = PayloadType::PtReadinfo;
