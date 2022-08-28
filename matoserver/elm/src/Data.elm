@@ -15,42 +15,6 @@ type alias ListAutomato =
     }
 
 
-
--- type FieldFormat
---     = FfChar
---     | FfFloat
---     | FfUint8
---     | FfUint16
---     | FfUint32
---     | FfInt8
---     | FfInt16
---     | FfInt32
---     | FfOther
--- getFormat : Int -> Maybe FieldFormat
--- getFormat code =
---     case code of
---         0 ->
---             Just FfChar
---         1 ->
---             Just FfFloat
---         2 ->
---             Just FfUint8
---         3 ->
---             Just FfUint16
---         4 ->
---             Just FfUint32
---         5 ->
---             Just FfInt8
---         6 ->
---             Just FfInt16
---         7 ->
---             Just FfInt32
---         8 ->
---             Just FfOther
---         _ ->
---             Nothing
-
-
 type FieldValue
     = FvChar String
     | FvFloat Float
@@ -87,11 +51,11 @@ decodeValue format rmr =
                 |> Maybe.map FvUint8
 
         3 ->
-            Bytes.Decode.decode (Bytes.Decode.unsignedInt16 Bytes.BE) bytes
+            Bytes.Decode.decode (Bytes.Decode.unsignedInt16 Bytes.LE) bytes
                 |> Maybe.map FvUint16
 
         4 ->
-            Bytes.Decode.decode (Bytes.Decode.unsignedInt32 Bytes.BE) bytes
+            Bytes.Decode.decode (Bytes.Decode.unsignedInt32 Bytes.LE) bytes
                 |> Maybe.map FvUint32
 
         5 ->
@@ -99,11 +63,11 @@ decodeValue format rmr =
                 |> Maybe.map FvInt8
 
         6 ->
-            Bytes.Decode.decode (Bytes.Decode.signedInt16 Bytes.BE) bytes
+            Bytes.Decode.decode (Bytes.Decode.signedInt16 Bytes.LE) bytes
                 |> Maybe.map FvInt16
 
         7 ->
-            Bytes.Decode.decode (Bytes.Decode.signedInt32 Bytes.BE) bytes
+            Bytes.Decode.decode (Bytes.Decode.signedInt32 Bytes.LE) bytes
                 |> Maybe.map FvInt32
 
         8 ->

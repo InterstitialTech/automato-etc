@@ -217,48 +217,87 @@ view size zone model =
             85
     in
     E.column []
-        [ E.text <| "protocol version: " ++ String.fromFloat model.automatoinfo.protoversion
-        , E.text <| "macAddress: " ++ String.fromInt model.automatoinfo.macAddress
-        , E.text <| "datalen: " ++ String.fromInt model.automatoinfo.datalen
-        , E.text <| "fieldcount: " ++ String.fromInt model.automatoinfo.fieldcount
-        , E.text <|
-            "temperature: "
-                ++ (case model.temperature of
+        [ E.table [ E.spacing 8 ]
+            { data =
+                [ ( "protocol version: "
+                  , String.fromFloat model.automatoinfo.protoversion
+                  )
+                , ( "macAddress: "
+                  , String.fromInt model.automatoinfo.macAddress
+                  )
+                , ( "datalen: "
+                  , String.fromInt model.automatoinfo.datalen
+                  )
+                , ( "fieldcount: "
+                  , String.fromInt model.automatoinfo.fieldcount
+                  )
+                , ( "temperature: "
+                  , case model.temperature of
                         Just f ->
                             String.fromFloat f
 
                         Nothing ->
                             "?"
-                   )
-        , E.text <|
-            "humidity: "
-                ++ (case model.humidity of
+                  )
+                , ( "humidity: "
+                  , case model.humidity of
                         Just f ->
                             String.fromFloat f
 
                         Nothing ->
                             "?"
-                   )
+                  )
+                ]
+            , columns =
+                [ { header = E.none
+                  , width = E.shrink
+                  , view = \( name, _ ) -> E.text name
+                  }
+                , { header = E.none
+                  , width = E.shrink
+                  , view = \( _, value ) -> E.text value
+                  }
+                ]
+            }
         , E.column [ E.padding 15, E.spacing 15 ]
-            (model.fields
-                |> Dict.values
-                |> List.map
-                    (\fld ->
-                        E.column []
-                            [ E.text <| "index" ++ String.fromInt fld.rfr.index
-                            , E.text <| "offset" ++ String.fromInt fld.rfr.offset
-                            , E.text <| "length" ++ String.fromInt fld.rfr.length
-                            , E.text <| "format" ++ String.fromInt fld.rfr.format
-                            , E.text <| "name" ++ String.fromList (List.map Char.fromCode fld.rfr.name)
-                            , case fld.value of
-                                Just v ->
-                                    E.el [ EF.bold ] (showFieldValue v)
+            [ E.el [ E.centerX, EF.bold ] <| E.text "data fields"
+            , E.table [ E.spacing 8 ]
+                { data = Dict.values model.fields
+                , columns =
+                    [ { header = E.text <| "index"
+                      , width = E.shrink
+                      , view = \fld -> E.text <| String.fromInt fld.rfr.index
+                      }
+                    , { header = E.text <| "offset"
+                      , width = E.shrink
+                      , view = \fld -> E.text <| String.fromInt fld.rfr.offset
+                      }
+                    , { header = E.text <| "length"
+                      , width = E.shrink
+                      , view = \fld -> E.text <| String.fromInt fld.rfr.length
+                      }
+                    , { header = E.text <| "format"
+                      , width = E.shrink
+                      , view = \fld -> E.text <| String.fromInt fld.rfr.format
+                      }
+                    , { header = E.text <| "name"
+                      , width = E.shrink
+                      , view = \fld -> E.text <| String.fromList (List.map Char.fromCode fld.rfr.name)
+                      }
+                    , { header = E.text <| "value"
+                      , width = E.shrink
+                      , view =
+                            \fld ->
+                                case fld.value of
+                                    Just v ->
+                                        E.el [ EF.bold ] (showFieldValue v)
 
-                                Nothing ->
-                                    E.none
-                            ]
-                    )
-            )
+                                    Nothing ->
+                                        E.none
+                      }
+                    ]
+                }
+            ]
         , EI.button Common.buttonStyle { onPress = Just DonePress, label = E.text "done" }
         ]
 
