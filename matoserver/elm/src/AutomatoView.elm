@@ -11,6 +11,8 @@ import Element.Border as EBd
 import Element.Events as EE
 import Element.Font as EF
 import Element.Input as EI
+import Json.Decode as JD
+import Json.Encode as JE
 import MsCommon as MS
 import Payload exposing (AutomatoMsg)
 import Round as R
@@ -35,20 +37,26 @@ type alias Field =
     }
 
 
+type alias PendingMsg =
+    { automatoMsg : AutomatoMsg
+    , what : Maybe String
+    }
+
+
 type alias Model =
     { automatoinfo : Payload.RemoteInfo
     , id : Int
     , temperature : Maybe Float
     , humidity : Maybe Float
     , fields : Dict Int Field
-    , pendingMsgs : List AutomatoMsg
+    , pendingMsgs : List PendingMsg
     }
 
 
 type Command
     = Done
     | ShowError String
-    | SendAutomatoMsg AutomatoMsg
+    | SendAutomatoMsg AutomatoMsg (Maybe String)
     | None
 
 
@@ -61,13 +69,15 @@ init : Int -> Payload.RemoteInfo -> ( Model, Command )
 init id ai =
     let
         pendingMsgs =
-            [ { id = id, message = Payload.PeReadtemperature }
-            , { id = id, message = Payload.PeReadhumidity }
+            [ { automatoMsg = { id = id, message = Payload.PeReadtemperature }, what = Nothing }
+            , { automatoMsg = { id = id, message = Payload.PeReadhumidity }, what = Nothing }
             ]
                 ++ (List.range 0 (ai.fieldcount - 1)
                         |> List.map
                             (\i ->
-                                { id = id, message = Payload.PeReadfield { index = i } }
+                                { automatoMsg = { id = id, message = Payload.PeReadfield { index = i } }
+                                , what = Nothing
+                                }
                             )
                    )
 
@@ -82,8 +92,8 @@ init id ai =
     in
     ( model
     , case List.head pendingMsgs of
-        Just msg ->
-            SendAutomatoMsg msg
+        Just pm ->
+            SendAutomatoMsg pm.automatoMsg pm.what
 
         Nothing ->
             None
@@ -141,8 +151,8 @@ readField rfr =
     }
 
 
-onAutomatoMsg : AutomatoMsg -> Model -> ( Model, Command )
-onAutomatoMsg am model =
+onAutomatoMsg : AutomatoMsg -> Maybe String -> Model -> ( Model, Command )
+onAutomatoMsg am mbwhat model =
     let
         nm =
             case am.message of
@@ -151,15 +161,41 @@ onAutomatoMsg am model =
                         | fields = Dict.insert rfr.index { rfr = rfr, value = Nothing } model.fields
                         , pendingMsgs =
                             model.pendingMsgs
-                                ++ [ { id = model.id, message = Payload.PeReadmem <| readField rfr } ]
+                                ++ [ { automatoMsg = { id = model.id, message = Payload.PeReadmem <| readField rfr }
+                                     , what =
+                                        JE.encode 0 (JE.int rfr.index)
+                                            |> Just
+                                     }
+                                   ]
                     }
 
                 Payload.PeReadmemreply rmr ->
-                    let
-                        _ =
-                            Debug.log "rmr: " rmr
-                    in
-                    model
+                    mbwhat
+                        |> Maybe.andThen
+                            (\what ->
+                                JD.decodeString JD.int what
+                                    |> Result.toMaybe
+                            )
+                        |> Maybe.andThen
+                            (\i ->
+                                Dict.get i model.fields
+                            )
+                        |> Maybe.andThen
+                            (\field ->
+                                Data.decodeValue field.rfr.format rmr
+                                    |> Maybe.map
+                                        (\val ->
+                                            { model
+                                                | fields =
+                                                    Dict.insert field.rfr.index
+                                                        { rfr = field.rfr
+                                                        , value = Just val
+                                                        }
+                                                        model.fields
+                                            }
+                                        )
+                            )
+                        |> Maybe.withDefault model
 
                 Payload.PeReadtemperaturereply f ->
                     { model
@@ -176,8 +212,8 @@ onAutomatoMsg am model =
     in
     ( { nm | pendingMsgs = List.drop 1 nm.pendingMsgs }
     , case List.head nm.pendingMsgs of
-        Just msg ->
-            SendAutomatoMsg msg
+        Just pm ->
+            SendAutomatoMsg pm.automatoMsg pm.what
 
         Nothing ->
             None

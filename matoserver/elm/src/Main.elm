@@ -47,17 +47,9 @@ import Util
 import WindowKeys
 
 
-type
-    Msg
-    -- = LoginMsg Login.Msg
-    -- | UserSettingsMsg UserSettings.Msg
+type Msg
     = ShowMessageMsg ShowMessage.Msg
-      -- | UserReplyData (Result Http.Error UI.ServerResponse)
-      -- | TimeclonkReplyData (Result Http.Error TI.ServerResponse)
-    | PublicReplyData (Result Http.Error PI.ServerResponse)
-      -- | ProjectTimeData String (Result Http.Error TI.ServerResponse)
-      -- | ProjectViewData String (Result Http.Error PI.ServerResponse)
-      -- | TProjectViewData String (Result Http.Error TI.ServerResponse)
+    | PublicReplyData (Maybe String) (Result Http.Error PI.ServerResponse)
     | LoadUrl String
     | InternalUrl Url
     | SelectedText JD.Value
@@ -69,17 +61,10 @@ type
     | ReceiveLocalVal { for : String, name : String, value : Maybe String }
     | AutomatoListingMsg AutomatoListing.Msg
     | AutomatoViewMsg AutomatoView.Msg
-      -- | AutomatoViewMsg AutomatoView.Msg
-      -- | AutomatoEditMsg AutomatoEdit.Msg
-      -- | AutomatoTimeMsg AutomatoTime.Msg
     | Noop
 
 
-type
-    State
-    -- = Login Login.Model
-    -- | UserSettings UserSettings.Model Data.LoginData State
-    -- | ShowMessage ShowMessage.Model Data.LoginData (Maybe State)
+type State
     = PubShowMessage ShowMessage.Model (Maybe State)
     | DisplayMessage DisplayMessage.GDModel State
     | AutomatoListing AutomatoListing.Model
@@ -189,7 +174,7 @@ showMessage msg =
         ShowMessageMsg _ ->
             "ShowMessageMsg"
 
-        PublicReplyData urd ->
+        PublicReplyData what urd ->
             "PublicReplyData: "
                 ++ (Result.map PI.showServerResponse urd
                         |> Result.mapError Util.httpErrorString
@@ -283,7 +268,7 @@ viewState size state model =
 
 sendPIMsg : String -> PI.SendMsg -> Cmd Msg
 sendPIMsg location msg =
-    sendPIMsgExp location msg PublicReplyData
+    sendPIMsgExp location msg (PublicReplyData Nothing)
 
 
 sendPIMsgExp : String -> PI.SendMsg -> (Result Http.Error PI.ServerResponse -> Msg) -> Cmd Msg
@@ -493,7 +478,7 @@ actualupdate msg model =
         ( WindowSize s, _ ) ->
             ( { model | size = s }, Cmd.none )
 
-        ( PublicReplyData urd, state ) ->
+        ( PublicReplyData what urd, state ) ->
             case urd of
                 Err e ->
                     ( displayMessageDialog model <| Util.httpErrorString e, Cmd.none )
@@ -530,7 +515,7 @@ actualupdate msg model =
                             in
                             case ( model.state, am.message ) of
                                 ( AutomatoView av, _ ) ->
-                                    handleAutomatoView model (AutomatoView.onAutomatoMsg am av)
+                                    handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
 
                                 ( _, Payload.PeReadinforeply info ) ->
                                     handleAutomatoView model (AutomatoView.init am.id info)
@@ -624,9 +609,9 @@ handleAutomatoView model ( nm, cmd ) =
         AutomatoView.ShowError e ->
             ( displayMessageDialog { model | state = AutomatoView nm } e, Cmd.none )
 
-        AutomatoView.SendAutomatoMsg am ->
+        AutomatoView.SendAutomatoMsg am what ->
             ( { model | state = AutomatoView nm }
-            , sendPIMsg model.location <| PI.SendAutomatoMsg am
+            , sendPIMsgExp model.location (PI.SendAutomatoMsg am) (PublicReplyData what)
             )
 
         AutomatoView.None ->
