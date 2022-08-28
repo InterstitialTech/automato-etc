@@ -90,6 +90,50 @@ init id ai =
     )
 
 
+
+-- type FieldValue
+--     = FvChar Char
+--     | FvFloat Float
+--     | FvUint8 Int
+--     | FvUint16 Int
+--     | FvUint32 Int
+--     | FvInt8 Int
+--     | FvInt16 Int
+--     | FvInt32 Int
+--     | FvOther (List Int)
+
+
+showFieldValue : Data.FieldValue -> Element a
+showFieldValue fv =
+    case fv of
+        Data.FvChar c ->
+            E.text <| String.fromChar c
+
+        Data.FvFloat f ->
+            E.text <| String.fromFloat f
+
+        Data.FvUint8 i ->
+            E.text <| String.fromInt i
+
+        Data.FvUint16 i ->
+            E.text <| String.fromInt i
+
+        Data.FvUint32 i ->
+            E.text <| String.fromInt i
+
+        Data.FvInt8 i ->
+            E.text <| String.fromInt i
+
+        Data.FvInt16 i ->
+            E.text <| String.fromInt i
+
+        Data.FvInt32 i ->
+            E.text <| String.fromInt i
+
+        Data.FvOther li ->
+            E.text <| String.fromList (List.map Char.fromCode li)
+
+
 readField : Payload.ReadFieldReply -> Payload.Readmem
 readField rfr =
     { address = rfr.offset
@@ -183,6 +227,12 @@ view size zone model =
                             , E.text <| "length" ++ String.fromInt fld.rfr.length
                             , E.text <| "format" ++ String.fromInt fld.rfr.format
                             , E.text <| "name" ++ String.fromList (List.map Char.fromCode fld.rfr.name)
+                            , case fld.value of
+                                Just v ->
+                                    E.el [ EF.bold ] (showFieldValue v)
+
+                                Nothing ->
+                                    E.none
                             ]
                     )
             )
