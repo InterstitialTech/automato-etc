@@ -116,8 +116,8 @@ init id ai =
 showFieldValue : Data.FieldValue -> Element a
 showFieldValue fv =
     case fv of
-        Data.FvChar c ->
-            E.text <| String.fromChar c
+        Data.FvChar s ->
+            E.text <| s
 
         Data.FvFloat f ->
             E.text <| String.fromFloat f

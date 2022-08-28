@@ -52,7 +52,7 @@ type alias ListAutomato =
 
 
 type FieldValue
-    = FvChar Char
+    = FvChar String
     | FvFloat Float
     | FvUint8 Int
     | FvUint16 Int
@@ -73,8 +73,10 @@ decodeValue format rmr =
     in
     case format of
         0 ->
-            List.head rmr.data
-                |> Maybe.map (\i -> FvChar <| Char.fromCode i)
+            List.map Char.fromCode rmr.data
+                |> String.fromList
+                |> FvChar
+                |> Just
 
         1 ->
             Bytes.Decode.decode (Bytes.Decode.float32 Bytes.BE) bytes
