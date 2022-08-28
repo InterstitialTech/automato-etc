@@ -79,7 +79,7 @@ decodeValue format rmr =
                 |> Just
 
         1 ->
-            Bytes.Decode.decode (Bytes.Decode.float32 Bytes.BE) bytes
+            Bytes.Decode.decode (Bytes.Decode.float32 Bytes.LE) bytes
                 |> Maybe.map FvFloat
 
         2 ->

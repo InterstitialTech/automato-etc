@@ -100,19 +100,6 @@ init id ai =
     )
 
 
-
--- type FieldValue
---     = FvChar Char
---     | FvFloat Float
---     | FvUint8 Int
---     | FvUint16 Int
---     | FvUint32 Int
---     | FvInt8 Int
---     | FvInt16 Int
---     | FvInt32 Int
---     | FvOther (List Int)
-
-
 showFieldValue : Data.FieldValue -> Element a
 showFieldValue fv =
     case fv of
