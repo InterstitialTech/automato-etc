@@ -28,6 +28,10 @@ import WindowKeys as WK
 
 type Msg
     = DonePress
+    | SelectField Int
+    | EditField String
+    | EditUpdate
+    | EditCancel
     | Noop
 
 
@@ -50,6 +54,7 @@ type alias Model =
     , humidity : Maybe Float
     , fields : Dict Int Field
     , pendingMsgs : List PendingMsg
+    , editedField : Maybe ( Int, String )
     }
 
 
@@ -88,6 +93,7 @@ init id ai =
             , humidity = Nothing
             , fields = Dict.empty
             , pendingMsgs = List.drop 1 pendingMsgs
+            , editedField = Nothing
             }
     in
     ( model
@@ -98,37 +104,6 @@ init id ai =
         Nothing ->
             None
     )
-
-
-showFieldValue : Data.FieldValue -> Element a
-showFieldValue fv =
-    case fv of
-        Data.FvChar s ->
-            E.text <| s
-
-        Data.FvFloat f ->
-            E.text <| String.fromFloat f
-
-        Data.FvUint8 i ->
-            E.text <| String.fromInt i
-
-        Data.FvUint16 i ->
-            E.text <| String.fromInt i
-
-        Data.FvUint32 i ->
-            E.text <| String.fromInt i
-
-        Data.FvInt8 i ->
-            E.text <| String.fromInt i
-
-        Data.FvInt16 i ->
-            E.text <| String.fromInt i
-
-        Data.FvInt32 i ->
-            E.text <| String.fromInt i
-
-        Data.FvOther li ->
-            E.text <| String.fromList (List.map Char.fromCode li)
 
 
 readField : Payload.ReadFieldReply -> Payload.Readmem
@@ -290,7 +265,52 @@ view size zone model =
                             \fld ->
                                 case fld.value of
                                     Just v ->
-                                        E.el [ EF.bold ] (showFieldValue v)
+                                        case
+                                            model.editedField
+                                                |> Maybe.andThen
+                                                    (\ef ->
+                                                        if Tuple.first ef == fld.rfr.index then
+                                                            Just ef
+
+                                                        else
+                                                            Nothing
+                                                    )
+                                        of
+                                            Just ( idx, str ) ->
+                                                E.column
+                                                    [ EBk.color TC.gray
+                                                    , E.paddingEach
+                                                        { top = 0, right = 8, bottom = 8, left = 8 }
+                                                    , E.spacing 8
+                                                    ]
+                                                    [ E.row
+                                                        [ EF.bold
+                                                        , EE.onClick (SelectField fld.rfr.index)
+                                                        , E.width E.fill
+                                                        , E.spacing 8
+                                                        ]
+                                                        [ E.text <| Data.showFieldValue v ]
+                                                    , EI.text []
+                                                        { onChange = EditField
+                                                        , text = str
+                                                        , placeholder = Nothing
+                                                        , label = EI.labelHidden "edited field"
+                                                        }
+                                                    , E.row [ E.width E.fill ]
+                                                        [ EI.button Common.buttonStyle
+                                                            { onPress = Just EditUpdate
+                                                            , label = E.text "update"
+                                                            }
+                                                        , EI.button Common.buttonStyle
+                                                            { onPress = Just EditCancel
+                                                            , label = E.text "cancel"
+                                                            }
+                                                        ]
+                                                    ]
+
+                                            Nothing ->
+                                                E.row [ EF.bold, EE.onClick (SelectField fld.rfr.index) ]
+                                                    [ E.text <| Data.showFieldValue v ]
 
                                     Nothing ->
                                         E.none
@@ -305,6 +325,50 @@ view size zone model =
 update : Msg -> Model -> Time.Zone -> ( Model, Command )
 update msg model zone =
     case msg of
+        SelectField i ->
+            ( { model
+                | editedField =
+                    if Maybe.map Tuple.first model.editedField == Just i then
+                        Nothing
+
+                    else
+                        Just ( i, "" )
+              }
+            , None
+            )
+
+        EditField s ->
+            ( { model | editedField = model.editedField |> Maybe.map (\( i, _ ) -> ( i, s )) }, None )
+
+        EditUpdate ->
+            ( { model | editedField = Nothing }
+            , model.editedField
+                |> Maybe.andThen
+                    (\( efi, efs ) ->
+                        Dict.get efi model.fields
+                            |> Maybe.andThen
+                                (\fld ->
+                                    Data.strToFieldValue fld.rfr efs
+                                        |> Maybe.map
+                                            (\fv ->
+                                                SendAutomatoMsg
+                                                    { id = model.id
+                                                    , message =
+                                                        Payload.PeWritemem
+                                                            { address = fld.rfr.offset
+                                                            , data = Data.encodeFieldValue fv
+                                                            }
+                                                    }
+                                                    Nothing
+                                            )
+                                )
+                    )
+                |> Maybe.withDefault None
+            )
+
+        EditCancel ->
+            ( { model | editedField = Nothing }, None )
+
         DonePress ->
             ( model, Done )
 

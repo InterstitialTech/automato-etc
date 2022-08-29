@@ -158,23 +158,23 @@ readmemReplyDecoder =
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "data" (Json.Decode.list (Json.Decode.int))))
 
 
-type alias WriteMemSerde =
+type alias Writemem =
     { address : Int
     , data : List (Int)
     }
 
 
-writeMemSerdeEncoder : WriteMemSerde -> Json.Encode.Value
-writeMemSerdeEncoder struct =
+writememEncoder : Writemem -> Json.Encode.Value
+writememEncoder struct =
     Json.Encode.object
         [ ( "address", (Json.Encode.int) struct.address )
         , ( "data", (Json.Encode.list (Json.Encode.int)) struct.data )
         ]
 
 
-writeMemSerdeDecoder : Json.Decode.Decoder WriteMemSerde
-writeMemSerdeDecoder =
-    Json.Decode.succeed WriteMemSerde
+writememDecoder : Json.Decode.Decoder Writemem
+writememDecoder =
+    Json.Decode.succeed Writemem
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "address" (Json.Decode.int)))
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "data" (Json.Decode.list (Json.Decode.int))))
 
@@ -236,7 +236,7 @@ type PayloadEnum
     | PeWritepin (Pinval)
     | PeReadmem (Readmem)
     | PeReadmemreply (ReadmemReply)
-    | PeWritemem (WriteMemSerde)
+    | PeWritemem (Writemem)
     | PeReadinfo
     | PeReadinforeply (RemoteInfo)
     | PeReadhumidity
@@ -269,7 +269,7 @@ payloadEnumEncoder enum =
         PeReadmemreply inner ->
             Json.Encode.object [ ( "PeReadmemreply", readmemReplyEncoder inner ) ]
         PeWritemem inner ->
-            Json.Encode.object [ ( "PeWritemem", writeMemSerdeEncoder inner ) ]
+            Json.Encode.object [ ( "PeWritemem", writememEncoder inner ) ]
         PeReadinfo ->
             Json.Encode.string "PeReadinfo"
         PeReadinforeply inner ->
@@ -310,7 +310,7 @@ payloadEnumDecoder =
         , Json.Decode.map PeWritepin (Json.Decode.field "PeWritepin" (pinvalDecoder))
         , Json.Decode.map PeReadmem (Json.Decode.field "PeReadmem" (readmemDecoder))
         , Json.Decode.map PeReadmemreply (Json.Decode.field "PeReadmemreply" (readmemReplyDecoder))
-        , Json.Decode.map PeWritemem (Json.Decode.field "PeWritemem" (writeMemSerdeDecoder))
+        , Json.Decode.map PeWritemem (Json.Decode.field "PeWritemem" (writememDecoder))
         , Json.Decode.string
             |> Json.Decode.andThen
                 (\x ->
