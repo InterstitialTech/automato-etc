@@ -38,7 +38,9 @@ decodeValue format rmr =
     in
     case format of
         0 ->
-            List.map Char.fromCode rmr.data
+            rmr.data
+                |> List.filter (\c -> c /= 0)
+                |> List.map Char.fromCode
                 |> String.fromList
                 |> FvChar
                 |> Just
