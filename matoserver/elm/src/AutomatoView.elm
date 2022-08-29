@@ -32,6 +32,7 @@ type Msg
     | EditField String
     | EditUpdate
     | EditCancel
+    | EditRefresh
     | Noop
 
 
@@ -296,7 +297,7 @@ view size zone model =
                                                         , placeholder = Nothing
                                                         , label = EI.labelHidden "edited field"
                                                         }
-                                                    , E.row [ E.width E.fill ]
+                                                    , E.row [ E.width E.fill, E.spacing 8 ]
                                                         [ EI.button Common.buttonStyle
                                                             { onPress = Just EditUpdate
                                                             , label = E.text "update"
@@ -304,6 +305,10 @@ view size zone model =
                                                         , EI.button Common.buttonStyle
                                                             { onPress = Just EditCancel
                                                             , label = E.text "cancel"
+                                                            }
+                                                        , EI.button Common.buttonStyle
+                                                            { onPress = Just EditRefresh
+                                                            , label = E.text "refresh"
                                                             }
                                                         ]
                                                     ]
@@ -320,6 +325,41 @@ view size zone model =
             ]
         , EI.button Common.buttonStyle { onPress = Just DonePress, label = E.text "done" }
         ]
+
+
+editUpdates : Model -> Maybe ( Command, PendingMsg )
+editUpdates model =
+    model.editedField
+        |> Maybe.andThen
+            (\( efi, efs ) ->
+                Dict.get efi model.fields
+                    |> Maybe.map
+                        (\fld ->
+                            Data.strToFieldValue fld.rfr efs
+                                |> Maybe.map
+                                    (\fv ->
+                                        ( SendAutomatoMsg
+                                            { id = model.id
+                                            , message =
+                                                Payload.PeWritemem
+                                                    { address = fld.rfr.offset
+                                                    , data = Data.encodeFieldValue fv
+                                                    }
+                                            }
+                                            Nothing
+                                        , { automatoMsg =
+                                                { id = model.id
+                                                , message = Payload.PeReadmem <| readField fld.rfr
+                                                }
+                                          , what =
+                                                JE.encode 0 (JE.int fld.rfr.index)
+                                                    |> Just
+                                          }
+                                        )
+                                    )
+                        )
+            )
+        |> Maybe.withDefault Nothing
 
 
 update : Msg -> Model -> Time.Zone -> ( Model, Command )
@@ -350,33 +390,27 @@ update msg model zone =
             ( { model | editedField = model.editedField |> Maybe.map (\( i, _ ) -> ( i, s )) }, None )
 
         EditUpdate ->
-            ( { model | editedField = Nothing }
-            , model.editedField
-                |> Maybe.andThen
-                    (\( efi, efs ) ->
-                        Dict.get efi model.fields
-                            |> Maybe.andThen
-                                (\fld ->
-                                    Data.strToFieldValue fld.rfr efs
-                                        |> Maybe.map
-                                            (\fv ->
-                                                SendAutomatoMsg
-                                                    { id = model.id
-                                                    , message =
-                                                        Payload.PeWritemem
-                                                            { address = fld.rfr.offset
-                                                            , data = Data.encodeFieldValue fv
-                                                            }
-                                                    }
-                                                    Nothing
-                                            )
-                                )
+            case editUpdates model of
+                Just ( send, pend ) ->
+                    ( { model | editedField = Nothing, pendingMsgs = model.pendingMsgs ++ [ pend ] }
+                    , send
                     )
-                |> Maybe.withDefault None
-            )
+
+                Nothing ->
+                    ( model, None )
 
         EditCancel ->
             ( { model | editedField = Nothing }, None )
+
+        EditRefresh ->
+            editUpdates model
+                |> Maybe.map
+                    (\( _, pend ) ->
+                        ( { model | editedField = Nothing }
+                        , SendAutomatoMsg pend.automatoMsg pend.what
+                        )
+                    )
+                |> Maybe.withDefault ( model, None )
 
         DonePress ->
             ( model, Done )
