@@ -332,7 +332,16 @@ update msg model zone =
                         Nothing
 
                     else
-                        Just ( i, "" )
+                        Dict.get i model.fields
+                            |> Maybe.map
+                                (\fl ->
+                                    case fl.value of
+                                        Just v ->
+                                            ( i, Data.showFieldValue v )
+
+                                        Nothing ->
+                                            ( i, "" )
+                                )
               }
             , None
             )
