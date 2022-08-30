@@ -17,7 +17,7 @@ type alias ListAutomato =
 
 
 type FieldValue
-    = FvChar String
+    = FvString String
     | FvFloat Float
     | FvUint8 Int
     | FvUint16 Int
@@ -43,7 +43,7 @@ decodeValue format rmr =
                 |> Tuple.first
                 |> List.map Char.fromCode
                 |> String.fromList
-                |> FvChar
+                |> FvString
                 |> Just
 
         1 ->
@@ -84,7 +84,7 @@ decodeValue format rmr =
 showFieldValue : FieldValue -> String
 showFieldValue fv =
     case fv of
-        FvChar s ->
+        FvString s ->
             s
 
         FvFloat f ->
@@ -117,7 +117,7 @@ encodeFieldValue fv =
     let
         bytes =
             case fv of
-                FvChar s ->
+                FvString s ->
                     Bytes.Encode.encode <|
                         Bytes.Encode.sequence
                             (List.map (Char.toCode >> Bytes.Encode.unsignedInt8) (String.toList s) ++ [ Bytes.Encode.unsignedInt8 0 ])
@@ -155,7 +155,7 @@ strToFieldValue : Payload.ReadFieldReply -> String -> Maybe FieldValue
 strToFieldValue rfr str =
     case rfr.format of
         0 ->
-            Just <| FvChar (String.left rfr.length str)
+            Just <| FvString (String.left rfr.length str)
 
         1 ->
             String.toFloat str

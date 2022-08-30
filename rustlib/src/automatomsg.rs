@@ -36,7 +36,7 @@ pub enum PayloadType {
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 pub enum FieldFormat {
-    FfChar = 0,
+    FfString = 0, // called ff_char on the C++ side
     FfFloat = 1,
     FfUint8 = 2,
     FfUint16 = 3,
