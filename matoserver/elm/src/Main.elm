@@ -509,10 +509,6 @@ actualupdate msg model =
                             )
 
                         PI.AutomatoMsg am ->
-                            let
-                                _ =
-                                    Debug.log "PI.AutomatoMsg" am
-                            in
                             case ( model.state, am.message ) of
                                 ( AutomatoView av, _ ) ->
                                     handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)

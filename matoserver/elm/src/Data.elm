@@ -39,7 +39,8 @@ decodeValue format rmr =
     case format of
         0 ->
             rmr.data
-                |> List.filter (\c -> c /= 0)
+                |> Util.splitAt ((==) 0)
+                |> Tuple.first
                 |> List.map Char.fromCode
                 |> String.fromList
                 |> FvChar
@@ -119,7 +120,7 @@ encodeFieldValue fv =
                 FvChar s ->
                     Bytes.Encode.encode <|
                         Bytes.Encode.sequence
-                            (List.map (Char.toCode >> Bytes.Encode.unsignedInt8) (String.toList s))
+                            (List.map (Char.toCode >> Bytes.Encode.unsignedInt8) (String.toList s) ++ [ Bytes.Encode.unsignedInt8 0 ])
 
                 FvFloat f ->
                     Bytes.Encode.encode (Bytes.Encode.float32 Bytes.LE f)
