@@ -214,7 +214,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         am::write_message(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
-        sleep(Duration::from_millis(420));
+        port.set_timeout(Duration::from_millis(420));
 
         if read_reply {
             match am::read_message(&mut port, &mut retmsg, &mut fromid) {
