@@ -278,6 +278,11 @@ view size zone model =
                                                     )
                                         of
                                             Just ( idx, str ) ->
+                                                let
+                                                    valid =
+                                                        editUpdates model
+                                                            |> Util.isJust
+                                                in
                                                 E.column
                                                     [ EBk.color TC.gray
                                                     , E.paddingEach
@@ -291,17 +296,30 @@ view size zone model =
                                                         , E.spacing 8
                                                         ]
                                                         [ E.text <| Data.showFieldValue v ]
-                                                    , EI.text []
+                                                    , EI.text
+                                                        [ if not valid then
+                                                            EF.color TC.red
+
+                                                          else
+                                                            EF.color TC.black
+                                                        ]
                                                         { onChange = EditField
                                                         , text = str
                                                         , placeholder = Nothing
                                                         , label = EI.labelHidden "edited field"
                                                         }
                                                     , E.row [ E.width E.fill, E.spacing 8 ]
-                                                        [ EI.button Common.buttonStyle
-                                                            { onPress = Just EditUpdate
-                                                            , label = E.text "update"
-                                                            }
+                                                        [ if valid then
+                                                            EI.button Common.buttonStyle
+                                                                { onPress = Just EditUpdate
+                                                                , label = E.text "update"
+                                                                }
+
+                                                          else
+                                                            EI.button Common.disabledButtonStyle
+                                                                { onPress = Nothing
+                                                                , label = E.text "update"
+                                                                }
                                                         , EI.button Common.buttonStyle
                                                             { onPress = Just EditCancel
                                                             , label = E.text "cancel"
