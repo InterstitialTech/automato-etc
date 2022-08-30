@@ -5,6 +5,7 @@ use crate::messages::{PublicMessage, ServerResponse};
 use crate::data::{AutomatoMsg, ListAutomato, ServerData};
 use automato::automatomsg as am;
 use log::info;
+use serial::SerialPort;
 use std::error::Error;
 use std::thread::sleep;
 use std::time::Duration;
@@ -37,7 +38,7 @@ pub fn public_interface(
                 am::write_message(&mut port, &mb, am.id)?;
 
                 let mut fromid: u8 = 0;
-                sleep(Duration::from_millis(420));
+                port.set_timeout(Duration::from_millis(420))?;
 
                 match am::read_message(&mut port, &mut retmsg, &mut fromid) {
                     Ok(true) => {
