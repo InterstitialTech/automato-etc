@@ -189,7 +189,7 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
 
             util::write_string(exportfile, output.as_str())?;
 
-            println!("wrote file: {}", output);
+            println!("wrote file: {}", exportfile);
 
             return Ok(());
         }
