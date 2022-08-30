@@ -1,0 +1,16 @@
+matomsg/cmsgs-out/
+matomsg/rustmsgs-out/
+matomsg/target/
+matoserver/elm/elm-stuff/
+# matoserver/server/config.toml
+matoserver/server/static/
+matoserver/server/target/
+rustlib/Cargo.lock
+rustlib/target/
+testmsgs/cmsgs-out/
+testmsgs/json-msgs/
+testmsgs/msgs
+testmsgs/out/
+testmsgs/rust-out/
+testmsgs/rustmsgs-out/
+testmsgs/target/

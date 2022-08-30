@@ -1,4 +1,38 @@
-module Util exposing (Size, Stopoid(..), YMDMS, andMap, captchaQ, compareColor, deadEndToString, deadEndsToString, first, foldUntil, httpErrorString, isJust, leadingZeroInt, mapNothing, maxInt, mbl, mblist, minInt, monthInt, paramParser, paramsParser, parseTime, problemToString, rest, rslist, sameDay, showDateTime, showTime, splitAt, toTimeMonth, trueforany, truncateDots, ymdsParser)
+module Util exposing
+    ( Size
+    , Stopoid(..)
+    , YMDMS
+    , andMap
+    , captchaQ
+    , compareColor
+    , deadEndToString
+    , deadEndsToString
+    , first
+    , foldUntil
+    , httpErrorString
+    , isJust
+    , leadingZeroInt
+    , mapNothing
+    , maxInt
+    , mbl
+    , mblist
+    , minInt
+    , monthInt
+    , paramParser
+    , paramsParser
+    , parseTime
+    , problemToString
+    , rest
+    , rslist
+    , sameDay
+    , showDateTime
+    , showTime
+    , splitAt
+    , toTimeMonth
+    , trueforany
+    , truncateDots
+    , ymdsParser
+    )
 
 import DateTime
 import Dict exposing (Dict)
@@ -283,7 +317,6 @@ monthInt month =
 
         Time.Dec ->
             12
-
 
 
 showDateTime : Time.Zone -> Time.Posix -> String

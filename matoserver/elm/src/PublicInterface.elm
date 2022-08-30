@@ -9,16 +9,18 @@ module PublicInterface exposing
 import Data exposing (AutomatoId)
 import Json.Decode as JD
 import Json.Encode as JE
+import Payload
 
 
 type SendMsg
     = GetAutomatoList
-    | GetAutomatoInfo Data.AutomatoId
+    | SendAutomatoMsg Payload.AutomatoMsg
 
 
 type ServerResponse
     = ServerError String
     | AutomatoList (List Data.ListAutomato)
+    | AutomatoMsg Payload.AutomatoMsg
 
 
 showServerResponse : ServerResponse -> String
@@ -30,6 +32,9 @@ showServerResponse sr =
         AutomatoList _ ->
             "AutomatoList"
 
+        AutomatoMsg _ ->
+            "AutomatoMsg"
+
 
 encodeSendMsg : SendMsg -> JE.Value
 encodeSendMsg sm =
@@ -39,10 +44,10 @@ encodeSendMsg sm =
                 [ ( "what", JE.string "GetAutomatoList" )
                 ]
 
-        GetAutomatoInfo aid ->
+        SendAutomatoMsg msg ->
             JE.object
-                [ ( "what", JE.string "GetAutomatoInfo" )
-                , ( "data", Data.getAutomatoIdVal aid |> JE.int )
+                [ ( "what", JE.string "AutomatoMsg" )
+                , ( "data", Payload.automatoMsgEncoder msg )
                 ]
 
 
@@ -60,6 +65,10 @@ serverResponseDecoder =
                         JD.at [ "content" ] (JD.list JD.int)
                             |> JD.map (List.map (\id -> { id = Data.makeAutomatoId id }))
                             |> JD.map AutomatoList
+
+                    "automatomsg" ->
+                        JD.at [ "content" ] Payload.automatoMsgDecoder
+                            |> JD.map AutomatoMsg
 
                     wat ->
                         JD.succeed

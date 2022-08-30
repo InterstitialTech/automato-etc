@@ -10,6 +10,7 @@
 struct ServerData {
   char name[25];
   float targettemp;
+  int32_t loops;
   uint64_t macAddress;
   float temperature;
   float humidity;
@@ -20,9 +21,10 @@ ServerData serverdata;
 MapField memoryMap[] = 
   { map_field(ServerData, name, ff_char)
   , map_field(ServerData, targettemp, ff_float)
+  , map_field(ServerData, loops, ff_int32)
   }; 
 
-Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 2, true);
+Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 3, true);
 
 void setup()
 {
@@ -53,10 +55,12 @@ void setup()
   serverdata.temperature = automato.getTemperature();
   serverdata.humidity = automato.getHumidity();
 
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A6, INPUT);
-  pinMode(A7, INPUT);
+  // pinMode(A0, INPUT);
+  // pinMode(A1, INPUT);
+  // pinMode(A6, INPUT);
+  // pinMode(A7, INPUT);
+
+  serverdata.loops = 0;
 
 }
 
@@ -73,4 +77,6 @@ void loop()
     Serial.print("error code:");
     Serial.println(ar.resultCode());
   }
+
+  serverdata.loops++;
 }

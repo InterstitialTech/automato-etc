@@ -3,7 +3,7 @@ use automato::automatomsg::Msgbuf;
 use clap::{Arg, Command};
 use simple_error::bail;
 use std::error::Error;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -211,13 +211,13 @@ fn err_main() -> Result<(), Box<dyn Error>> {
 
     let read_reply = true;
     unsafe {
-        write_message(&mut port, &mb, automatoaddr)?;
+        am::write_message(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
         sleep(Duration::from_millis(420));
 
         if read_reply {
-            match read_message(&mut port, &mut retmsg, &mut fromid) {
+            match am::read_message(&mut port, &mut retmsg, &mut fromid) {
                 Ok(true) => {
                     println!("reply from: {}", fromid);
                     // for i in 0..retmsg.buf.len() {
@@ -260,44 +260,4 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         }
     }
     Ok(())
-}
-
-unsafe fn write_message(
-    port: &mut serial::SystemPort,
-    msg: &Msgbuf,
-    toid: u8,
-) -> Result<(), serial::Error> {
-    let sz = am::payload_size(&msg.payload);
-
-    port.write(&['m' as u8])?;
-    port.write(&[toid as u8])?;
-    port.write(&[sz as u8])?;
-    port.write(&msg.buf[0..sz + 1])?;
-
-    Ok(())
-}
-
-unsafe fn read_message(
-    port: &mut serial::SystemPort,
-    msg: &mut Msgbuf,
-    fromid: &mut u8,
-) -> Result<bool, serial::Error> {
-    let mut monobuf = [0; 1];
-
-    port.read_exact(&mut monobuf)?;
-    if monobuf[0] as char != 'm' {
-        return Ok(false);
-    }
-
-    port.read_exact(&mut monobuf)?;
-    *fromid = monobuf[0];
-
-    port.read_exact(&mut monobuf)?;
-    let sz = monobuf[0] as usize;
-
-    if sz > 0 {
-        port.read_exact(&mut msg.buf[0..sz])?;
-    }
-
-    Ok(true)
 }

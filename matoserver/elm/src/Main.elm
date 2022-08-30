@@ -31,6 +31,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import LocalStorage as LS
+import Payload
 import PublicInterface as PI
 import Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
 import ShowMessage
@@ -46,17 +47,9 @@ import Util
 import WindowKeys
 
 
-type
-    Msg
-    -- = LoginMsg Login.Msg
-    -- | UserSettingsMsg UserSettings.Msg
+type Msg
     = ShowMessageMsg ShowMessage.Msg
-      -- | UserReplyData (Result Http.Error UI.ServerResponse)
-      -- | TimeclonkReplyData (Result Http.Error TI.ServerResponse)
-    | PublicReplyData (Result Http.Error PI.ServerResponse)
-      -- | ProjectTimeData String (Result Http.Error TI.ServerResponse)
-      -- | ProjectViewData String (Result Http.Error PI.ServerResponse)
-      -- | TProjectViewData String (Result Http.Error TI.ServerResponse)
+    | PublicReplyData (Maybe String) (Result Http.Error PI.ServerResponse)
     | LoadUrl String
     | InternalUrl Url
     | SelectedText JD.Value
@@ -68,17 +61,10 @@ type
     | ReceiveLocalVal { for : String, name : String, value : Maybe String }
     | AutomatoListingMsg AutomatoListing.Msg
     | AutomatoViewMsg AutomatoView.Msg
-      -- | AutomatoViewMsg AutomatoView.Msg
-      -- | AutomatoEditMsg AutomatoEdit.Msg
-      -- | AutomatoTimeMsg AutomatoTime.Msg
     | Noop
 
 
-type
-    State
-    -- = Login Login.Model
-    -- | UserSettings UserSettings.Model Data.LoginData State
-    -- | ShowMessage ShowMessage.Model Data.LoginData (Maybe State)
+type State
     = PubShowMessage ShowMessage.Model (Maybe State)
     | DisplayMessage DisplayMessage.GDModel State
     | AutomatoListing AutomatoListing.Model
@@ -156,7 +142,12 @@ routeState model route =
 
         AutomatoViewR id ->
             ( (displayMessageDialog model "loading automato info").state
-            , sendPIMsg model.location (PI.GetAutomatoInfo (Data.makeAutomatoId id))
+            , sendPIMsg model.location
+                (PI.SendAutomatoMsg
+                    { id = id
+                    , message = Payload.PeReadinfo
+                    }
+                )
             )
 
 
@@ -164,7 +155,7 @@ stateRoute : State -> SavedRoute
 stateRoute state =
     case state of
         AutomatoView mod ->
-            { route = AutomatoViewR (Data.getAutomatoIdVal mod.automatoinfo.id)
+            { route = AutomatoViewR mod.id
             , save = True
             }
 
@@ -183,7 +174,7 @@ showMessage msg =
         ShowMessageMsg _ ->
             "ShowMessageMsg"
 
-        PublicReplyData urd ->
+        PublicReplyData what urd ->
             "PublicReplyData: "
                 ++ (Result.map PI.showServerResponse urd
                         |> Result.mapError Util.httpErrorString
@@ -277,7 +268,7 @@ viewState size state model =
 
 sendPIMsg : String -> PI.SendMsg -> Cmd Msg
 sendPIMsg location msg =
-    sendPIMsgExp location msg PublicReplyData
+    sendPIMsgExp location msg (PublicReplyData Nothing)
 
 
 sendPIMsgExp : String -> PI.SendMsg -> (Result Http.Error PI.ServerResponse -> Msg) -> Cmd Msg
@@ -487,7 +478,7 @@ actualupdate msg model =
         ( WindowSize s, _ ) ->
             ( { model | size = s }, Cmd.none )
 
-        ( PublicReplyData urd, state ) ->
+        ( PublicReplyData what urd, state ) ->
             case urd of
                 Err e ->
                     ( displayMessageDialog model <| Util.httpErrorString e, Cmd.none )
@@ -516,6 +507,17 @@ actualupdate msg model =
                               }
                             , Cmd.none
                             )
+
+                        PI.AutomatoMsg am ->
+                            case ( model.state, am.message ) of
+                                ( AutomatoView av, _ ) ->
+                                    handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
+
+                                ( _, Payload.PeReadinforeply info ) ->
+                                    handleAutomatoView model (AutomatoView.init am.id info)
+
+                                _ ->
+                                    ( model, Cmd.none )
 
         ( DisplayMessageMsg bm, DisplayMessage bs prevstate ) ->
             case GD.update bm bs of
@@ -547,7 +549,11 @@ actualupdate msg model =
             case cmd of
                 AutomatoListing.Selected id ->
                     ( { model | state = AutomatoListing nm }
-                    , sendPIMsg model.location <| PI.GetAutomatoInfo id
+                    , sendPIMsg model.location <|
+                        PI.SendAutomatoMsg
+                            { id = Data.getAutomatoIdVal id
+                            , message = Payload.PeReadinfo
+                            }
                     )
 
                 -- AutomatoListing.New ->
@@ -598,6 +604,11 @@ handleAutomatoView model ( nm, cmd ) =
 
         AutomatoView.ShowError e ->
             ( displayMessageDialog { model | state = AutomatoView nm } e, Cmd.none )
+
+        AutomatoView.SendAutomatoMsg am what ->
+            ( { model | state = AutomatoView nm }
+            , sendPIMsgExp model.location (PI.SendAutomatoMsg am) (PublicReplyData what)
+            )
 
         AutomatoView.None ->
             ( { model | state = AutomatoView nm }, Cmd.none )

@@ -1,7 +1,10 @@
+use elm_rs::{Elm, ElmJson};
 use num_derive::{FromPrimitive, ToPrimitive};
 use serde::de::Deserializer;
 use serde::ser::{SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
+use serial;
+use std::io::{Read, Write};
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
@@ -31,7 +34,20 @@ pub enum PayloadType {
     PtReadfieldreply = 18,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
+pub enum FieldFormat {
+    FfString = 0, // called ff_char on the C++ side
+    FfFloat = 1,
+    FfUint8 = 2,
+    FfUint16 = 3,
+    FfUint32 = 4,
+    FfInt8 = 5,
+    FfInt16 = 6,
+    FfInt32 = 7,
+    FfOther = 8,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct RemoteInfo {
@@ -41,7 +57,7 @@ pub struct RemoteInfo {
     pub fieldcount: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinval {
@@ -49,7 +65,7 @@ pub struct Pinval {
     pub state: u8,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct AnalogPinval {
@@ -57,7 +73,7 @@ pub struct AnalogPinval {
     pub state: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Pinmode {
@@ -65,7 +81,7 @@ pub struct Pinmode {
     pub mode: u8,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Readmem {
@@ -83,123 +99,39 @@ const MAX_READMEM: usize = 249;
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
-pub struct ReadmemReply {
+pub struct ReadmemReplyUnion {
     pub length: u8,
     pub data: [u8; MAX_READMEM],
 }
 
-impl Serialize for ReadmemReply {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.length as usize))?;
-        let mut count = self.length;
-        for d in self.data {
-            if count > 0 {
-                seq.serialize_element(&d)?;
-            } else {
-                break;
-            }
-            count = count - 1;
-        }
-        seq.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for ReadmemReply {
-    fn deserialize<D>(deserializer: D) -> Result<ReadmemReply, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        // not the most efficient!  but simpler than implementing a whole deserializer.
-        let mut vecu8 = Vec::<u8>::deserialize(deserializer)?;
-
-        println!("vecu8: {:?}", vecu8);
-
-        let len = vecu8.len();
-
-        vecu8.truncate(MAX_READMEM);
-
-        for _ in vecu8.len()..MAX_READMEM {
-            vecu8.push(0 as u8);
-        }
-
-        Ok(ReadmemReply {
-            length: len as u8,
-            data: vecu8.try_into().unwrap_or_else(|v: Vec<u8>| {
-                panic!(
-                    "Expected a Vec of length {} but it was {}",
-                    MAX_READMEM,
-                    v.len()
-                )
-            }),
-        })
-    }
+#[derive(Clone, Debug, Elm, ElmJson, Serialize, Deserialize)]
+pub struct ReadmemReply {
+    pub data: Vec<u8>,
 }
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 #[repr(packed)]
-pub struct Writemem {
+pub struct WritememUnion {
     pub address: u16,
     pub length: u8,
     pub data: [u8; MAX_WRITEMEM],
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct WriteMemSerde {
+#[derive(Clone, Serialize, Deserialize, Debug, Elm, ElmJson)]
+pub struct Writemem {
     pub address: u16,
     pub data: Vec<u8>,
 }
 
-impl Serialize for Writemem {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let wm = WriteMemSerde {
-            address: self.address,
-            data: self.data[0..self.length as usize].to_vec(),
-        };
-        wm.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Writemem {
-    fn deserialize<D>(deserializer: D) -> Result<Writemem, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let wm: WriteMemSerde = WriteMemSerde::deserialize(deserializer)?;
-
-        println!("reading WriteMemSerde: {:?}", wm);
-
-        let mut w = Writemem {
-            address: wm.address,
-            length: wm.data.len() as u8,
-            data: [0; MAX_WRITEMEM],
-        };
-
-        // copy in data.
-        let mut toidx = 0;
-        for x in wm.data {
-            w.data[toidx] = x;
-            toidx = toidx + 1;
-        }
-
-        Ok(w)
-    }
-}
-
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadField {
     pub index: u16,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Elm, ElmJson)]
 #[repr(C)]
 #[repr(packed)]
 pub struct ReadFieldReply {
@@ -218,8 +150,8 @@ pub union PayloadData {
     pub pinmode: Pinmode,
     pub analogpinval: AnalogPinval,
     pub readmem: Readmem,
-    pub readmemreply: ReadmemReply,
-    pub writemem: Writemem,
+    pub readmemreply: ReadmemReplyUnion,
+    pub writemem: WritememUnion,
     pub remoteinfo: RemoteInfo,
     pub readfield: ReadField,
     pub readfieldreply: ReadFieldReply,
@@ -237,7 +169,7 @@ pub struct Payload {
     pub data: PayloadData,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Elm, ElmJson)]
 pub enum PayloadEnum {
     PeAck,
     PeFail(u8),
@@ -260,7 +192,7 @@ pub enum PayloadEnum {
     PeReadfieldreply(ReadFieldReply),
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct PayloadSerde {
     pub payload: PayloadEnum,
 }
@@ -281,9 +213,22 @@ impl From<Payload> for PayloadEnum {
                 }
                 PayloadType::PtReadmem => PayloadEnum::PeReadmem(payload.data.readmem),
                 PayloadType::PtReadmemreply => {
-                    PayloadEnum::PeReadmemreply(payload.data.readmemreply)
+                    let rmr = ReadmemReply {
+                        data: payload.data.readmemreply.data
+                            [0..payload.data.readmemreply.length as usize]
+                            .to_vec(),
+                    };
+                    PayloadEnum::PeReadmemreply(rmr)
                 }
-                PayloadType::PtWritemem => PayloadEnum::PeWritemem(payload.data.writemem),
+                PayloadType::PtWritemem => {
+                    let wm = Writemem {
+                        address: payload.data.writemem.address,
+                        data: payload.data.writemem.data[0..payload.data.writemem.length as usize]
+                            .to_vec(),
+                    };
+                    PayloadEnum::PeWritemem(wm)
+                }
+                // PayloadEnum::PeWritemem(payload.data.writemem),
                 PayloadType::PtReadinfo => PayloadEnum::PeReadinfo,
                 PayloadType::PtReadinforeply => {
                     PayloadEnum::PeReadinforeply(payload.data.remoteinfo)
@@ -348,11 +293,32 @@ impl From<PayloadEnum> for Payload {
             }
             PayloadEnum::PeReadmemreply(readmemreply) => {
                 payload.payload_type = PayloadType::PtReadmemreply;
-                payload.data.readmemreply = readmemreply
+                let mut r = ReadmemReplyUnion {
+                    length: readmemreply.data.len() as u8,
+                    data: [0; MAX_READMEM],
+                };
+                // copy in data.
+                let mut toidx = 0;
+                for x in readmemreply.data {
+                    r.data[toidx] = x;
+                    toidx = toidx + 1;
+                }
+                payload.data.readmemreply = r
             }
             PayloadEnum::PeWritemem(writemem) => {
                 payload.payload_type = PayloadType::PtWritemem;
-                payload.data.writemem = writemem
+                let mut w = WritememUnion {
+                    address: writemem.address,
+                    length: writemem.data.len() as u8,
+                    data: [0; MAX_WRITEMEM],
+                };
+                // copy in data.
+                let mut toidx = 0;
+                for x in writemem.data {
+                    w.data[toidx] = x;
+                    toidx = toidx + 1;
+                }
+                payload.data.writemem = w
             }
             PayloadEnum::PeReadinfo => {
                 payload.payload_type = PayloadType::PtReadinfo;
@@ -574,14 +540,14 @@ pub fn setup_readfieldreply(
     index: u16,
     offset: u16,
     length: u8,
-    format: u8,
+    format: FieldFormat,
     name: &[u8],
 ) {
     p.payload_type = PayloadType::PtReadfieldreply;
     p.data.readfieldreply.index = index;
     p.data.readfieldreply.offset = offset;
     p.data.readfieldreply.length = length;
-    p.data.readfieldreply.format = format;
+    p.data.readfieldreply.format = format as u8;
     unsafe {
         p.data.readfieldreply.name[0..name.len()].copy_from_slice(&name);
     }
@@ -704,7 +670,7 @@ pub unsafe fn print_payload(p: &Payload) {
             println!("index: {}", { p.data.readfieldreply.index });
             println!("offset: {}", { p.data.readfieldreply.offset });
             println!("length: {}", p.data.readfieldreply.length);
-            println!("format: {}", p.data.readfieldreply.format);
+            println!("format: {:?}", p.data.readfieldreply.format);
             print!("name: ");
             for i in 0..p.data.readfieldreply.name.len() {
                 print!("{}", p.data.readfieldreply.name[i] as char);
@@ -712,4 +678,44 @@ pub unsafe fn print_payload(p: &Payload) {
             println!("");
         }
     }
+}
+
+pub unsafe fn write_message(
+    port: &mut serial::SystemPort,
+    msg: &Msgbuf,
+    toid: u8,
+) -> Result<(), serial::Error> {
+    let sz = payload_size(&msg.payload);
+
+    port.write(&['m' as u8])?;
+    port.write(&[toid as u8])?;
+    port.write(&[sz as u8])?;
+    port.write(&msg.buf[0..sz + 1])?;
+
+    Ok(())
+}
+
+pub unsafe fn read_message(
+    port: &mut serial::SystemPort,
+    msg: &mut Msgbuf,
+    fromid: &mut u8,
+) -> Result<bool, serial::Error> {
+    let mut monobuf = [0; 1];
+
+    port.read_exact(&mut monobuf)?;
+    if monobuf[0] as char != 'm' {
+        return Ok(false);
+    }
+
+    port.read_exact(&mut monobuf)?;
+    *fromid = monobuf[0];
+
+    port.read_exact(&mut monobuf)?;
+    let sz = monobuf[0] as usize;
+
+    if sz > 0 {
+        port.read_exact(&mut msg.buf[0..sz])?;
+    }
+
+    Ok(true)
 }

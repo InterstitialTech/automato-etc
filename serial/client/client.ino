@@ -11,6 +11,7 @@ struct ServerData {
   char name[25];
   float targettemp;
   uint64_t macAddress;
+  int32_t loops;
   float temperature;
   float humidity;
 };
@@ -20,17 +21,16 @@ ServerData serverdata;
 MapField memoryMap[] = 
   { map_field(ServerData, name, ff_char)
   , map_field(ServerData, targettemp, ff_float)
+  , map_field(ServerData, loops, ff_int32)
   }; 
 
 
-Automato automato(1, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 2, true);
+Automato automato(1, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 3, true);
 
 // the automato we're going to control remotely.
 uint8_t serveraddr(2);
 
 bool on;
-
-uint8_t loops;
 
 void setup()
 {
@@ -50,15 +50,21 @@ void setup()
 
   on = true;
 
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A6, INPUT);
-  pinMode(A7, INPUT);
+  // pinMode(A0, INPUT);
+  // pinMode(A1, INPUT);
+  // pinMode(A6, INPUT);
+  // pinMode(A7, INPUT);
 
-  loops = 0;
+  serverdata.loops = 0;
+
+  strcpy(serverdata.name, "test 1 2 3");
+  serverdata.targettemp = 42.0;
+ 
 }
 
 void loop()
 {
   automato.doSerial();
+
+  serverdata.loops++;
 }
