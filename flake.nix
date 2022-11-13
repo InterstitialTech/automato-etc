@@ -18,6 +18,8 @@
               cargo
               cargo-watch
               rustc
+              rustfmt
+              rust-analyzer
               openssl.dev
               pkgconfig
               elm2nix
