@@ -209,14 +209,34 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     };
     port.configure(&ps)?;
 
-    let read_reply = true;
+    let debug_reply = false;
     unsafe {
         am::write_message(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
         port.set_timeout(Duration::from_millis(420));
 
-        if read_reply {
+        if debug_reply {
+            let mut monobuf = [0; 1];
+            let mut count = 0;
+            while port.read_exact(&mut monobuf).is_ok() {
+                // just print the chars we read.  good for debug from Serial.print() on the automato.
+                // print!("{}", monobuf[0] as char);
+
+                // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
+
+                // print the index, number, and char
+                println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
+                count = count + 1;
+            }
+            // let mut buf = String::new();
+            // let mut monobuf = [0; 1];
+            // port.read_exact(&mut monobuf)?;
+            // buf.push(monobuf[0] as char);
+            // if monobuf[0] as char == '\n' {
+            //     println!("msg: {}", buf);
+            // }
+        } else {
             match am::read_message(&mut port, &mut retmsg, &mut fromid) {
                 Ok(true) => {
                     println!("reply from: {}", fromid);
@@ -237,26 +257,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     println!("error: {:?}", e);
                 }
             }
-        } else {
-            let mut monobuf = [0; 1];
-            let mut count = 0;
-            while port.read_exact(&mut monobuf).is_ok() {
-                // just print the chars we read.  good for debug from Serial.print() on the automato.
-                // print!("{}", monobuf[0] as char);
-
-                // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
-
-                // print the index, number, and char
-                println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
-                count = count + 1;
-            }
-            // let mut buf = String::new();
-            // let mut monobuf = [0; 1];
-            // port.read_exact(&mut monobuf)?;
-            // buf.push(monobuf[0] as char);
-            // if monobuf[0] as char == '\n' {
-            //     println!("msg: {}", buf);
-            // }
         }
     }
     Ok(())
