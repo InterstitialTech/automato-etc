@@ -1,17 +1,17 @@
-// server.ino
+// serialtolora.ino
 // -*- mode: C++ -*-
 
 #include <SPI.h>
-#include <RH_RF95.h>
 #include <AutomatoMsg.h>
+#include <pins_arduino.h>
 #include <Automato.h>
 
 // ideally this would go in a shared header file,
 struct ServerData {
   char name[25];
   float targettemp;
-  int32_t loops;
   uint64_t macAddress;
+  int32_t loops;
   float temperature;
   float humidity;
 };
@@ -24,14 +24,16 @@ MapField memoryMap[] =
   , map_field(ServerData, loops, ff_int32)
   }; 
 
-Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 3, true);
+
+Automato automato(1, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 3, true);
+
+bool on;
 
 void setup()
 {
   pinMode(PIN_LORA_RST, INPUT); // Let the pin float.
-  pinMode(PIN_LED, OUTPUT);
 
-  // Disable SPI devices until needed.
+  // Disable other SPI devices.
   pinMode(PIN_LCD_CS, OUTPUT);
   digitalWrite(PIN_LCD_CS, HIGH);
   pinMode(PIN_TCH_CS, OUTPUT);
@@ -43,17 +45,7 @@ void setup()
 
   automato.init(915.0, 20);
 
-  Serial.println("automato remote control server");
-
-  Serial.print("my mac address:");
-  Serial.println(Automato::macAddress());
-
-
-  strcpy(serverdata.name, "theserver");
-  serverdata.targettemp = 70;
-  serverdata.macAddress = automato.macAddress();
-  serverdata.temperature = automato.getTemperature();
-  serverdata.humidity = automato.getHumidity();
+  on = true;
 
   // pinMode(A0, INPUT);
   // pinMode(A1, INPUT);
@@ -62,21 +54,16 @@ void setup()
 
   serverdata.loops = 0;
 
+  strcpy(serverdata.name, "test 1 2 3");
+  serverdata.targettemp = 42.0;
+ 
 }
-
-
-AutomatoResult ar;
 
 void loop()
 {
-  if (!(ar = automato.doRemoteControl()))
-  {
-    Serial.println("-------- failure ---------");
-    Serial.println("error from doRemoteControl():");
-    Serial.println(ar.as_string());
-    Serial.print("error code:");
-    Serial.println(ar.resultCode());
-  }
+  automato.doSerial();
 
+  // Serial.print("meh");
+  // Serial.println(serverdata.loops);
   serverdata.loops++;
 }
