@@ -293,9 +293,16 @@ view size zone model =
                                                         [ EF.bold
                                                         , EE.onClick (SelectField fld.rfr.index)
                                                         , E.width E.fill
+                                                        , E.height E.fill
                                                         , E.spacing 8
                                                         ]
-                                                        [ E.text <| Data.showFieldValue v ]
+                                                        [ case Data.showFieldValue v of
+                                                            "" ->
+                                                                E.text " "
+
+                                                            s ->
+                                                                E.text s
+                                                        ]
                                                     , EI.text
                                                         [ if not valid then
                                                             EF.color TC.red
@@ -333,7 +340,13 @@ view size zone model =
 
                                             Nothing ->
                                                 E.row [ EF.bold, EE.onClick (SelectField fld.rfr.index) ]
-                                                    [ E.text <| Data.showFieldValue v ]
+                                                    [ case Data.showFieldValue v of
+                                                        "" ->
+                                                            E.text " "
+
+                                                        s ->
+                                                            E.text s
+                                                    ]
 
                                     Nothing ->
                                         E.none
