@@ -46,12 +46,6 @@ void setup()
   automato.init(915.0, 20);
 
   on = true;
-
-  // pinMode(A0, INPUT);
-  // pinMode(A1, INPUT);
-  // pinMode(A6, INPUT);
-  // pinMode(A7, INPUT);
-
   serverdata.loops = 0;
 
   strcpy(serverdata.name, "test 1 2 3");
