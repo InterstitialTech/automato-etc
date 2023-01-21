@@ -44,6 +44,15 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .value_name("NUMBER")
+                .help("timeout (ms)")
+                .default_value("420")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("address")
                 .short('a')
                 .long("address")
@@ -103,15 +112,16 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         )
         .get_matches();
 
-    let (port, baud, automatoaddr) = match (
+    let (port, baud, automatoaddr, timeout) = match (
         matches.value_of("port"),
         matches.value_of("baud"),
         matches.value_of("address"),
+        matches.value_of("timeout"),
     ) {
-        (Some(port), Some(baudstr), Some(addrstr)) => {
+        (Some(port), Some(baudstr), Some(addrstr), Some(timeout)) => {
             let baud = BaudRate::from_speed(baudstr.parse::<usize>()?);
             let addr = addrstr.parse::<u8>()?;
-            (port, baud, addr)
+            (port, baud, addr, timeout.parse::<u64>()?)
         }
         _ => bail!("arg failure"),
     };
@@ -214,7 +224,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         am::write_message(&mut port, &mb, automatoaddr)?;
 
         let mut fromid: u8 = 0;
-        port.set_timeout(Duration::from_millis(420));
+        port.set_timeout(Duration::from_millis(timeout));
 
         if debug_reply {
             let mut monobuf = [0; 1];
