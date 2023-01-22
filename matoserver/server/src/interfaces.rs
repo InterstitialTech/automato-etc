@@ -5,7 +5,7 @@ use crate::messages::{PublicMessage, ServerResponse};
 use crate::data::{AutomatoMsg, ListAutomato, ServerData};
 use automato::automatomsg as am;
 use log::info;
-use serial::SerialPort;
+use serialport::SerialPort;
 use std::error::Error;
 use std::thread::sleep;
 use std::time::Duration;
@@ -35,12 +35,12 @@ pub fn public_interface(
             unsafe {
                 mb.payload = am::Payload::from(am.message);
                 let mut port = data.port.lock()?;
-                am::write_message(&mut port, &mb, am.id)?;
+                am::write_message(&mut **port, &mb, am.id)?;
 
                 let mut fromid: u8 = 0;
-                port.set_timeout(Duration::from_millis(420))?;
+                port.set_timeout(Duration::from_millis(2420))?;
 
-                match am::read_message(&mut port, &mut retmsg, &mut fromid) {
+                match am::read_message(&mut **port, &mut retmsg, &mut fromid) {
                     Ok(true) => {
                         println!("reply from: {}", fromid);
                         // for i in 0..retmsg.buf.len() {
@@ -68,8 +68,9 @@ pub fn public_interface(
                     Err(e) => {
                         println!("error: {:?}", e);
                         Ok(ServerResponse {
-                            what: "err".to_string(),
-                            content: serde_json::Value::Null,
+                            what: "server error".to_string(),
+                            content: serde_json::to_value(format!("{}", e))?,
+                            // content: serde_json::Value::Null,
                         })
                     }
                 }

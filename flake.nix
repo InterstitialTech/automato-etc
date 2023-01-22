@@ -17,10 +17,12 @@
             nativeBuildInputs = with pkgs; [
               cargo
               cargo-watch
+              cargo-edit
               rustc
               rustfmt
               rust-analyzer
               openssl.dev
+              udev
               pkgconfig
               elm2nix
               elmPackages.elm

@@ -19,5 +19,5 @@ pub struct AutomatoMsg {
 
 pub struct ServerData {
     pub config: Config,
-    pub port: Arc<Mutex<serial::SystemPort>>,
+    pub port: Arc<Mutex<Box<serialport::SerialPort>>>,
 }

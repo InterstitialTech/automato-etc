@@ -1,4 +1,5 @@
 use clap::Arg;
+use std::time::Duration;
 mod config;
 mod data;
 mod interfaces;
@@ -12,7 +13,8 @@ use data::{AutomatoMsg, ServerData};
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
 use serde_json;
-use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
+// use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
+use serialport;
 use simple_error::bail;
 use std::env;
 use std::error::Error;
@@ -157,6 +159,15 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .value_name("NUMBER")
+                .help("timeout (ms)")
+                .default_value("420")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("writeelmbindings")
                 .long("writeelmbindings")
                 .value_name("FILE")
@@ -210,10 +221,14 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
 
             info!("server init!");
 
-            let (port, baud) = match (matches.value_of("port"), matches.value_of("baud")) {
-                (Some(port), Some(baudstr)) => {
-                    let baud = BaudRate::from_speed(baudstr.parse::<usize>()?);
-                    (port, baud)
+            let (port, baud, timeout) = match (
+                matches.value_of("port"),
+                matches.value_of("baud"),
+                matches.value_of("timeout"),
+            ) {
+                (Some(port), Some(baudstr), Some(timeout)) => {
+                    let baud = baudstr.parse::<u32>()?;
+                    (port, baud, timeout.parse::<u64>()?)
                 }
                 _ => bail!("arg failure"),
             };
@@ -230,16 +245,23 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
 
             info!("config: {:?}", config);
 
-            let mut port = serial::open(port)?;
+            // let mut port = serial::open(port)?;
+            let mut port = serialport::new(port, baud)
+                .data_bits(serialport::DataBits::Eight)
+                .flow_control(serialport::FlowControl::None)
+                .parity(serialport::Parity::None)
+                .stop_bits(serialport::StopBits::One)
+                .timeout(Duration::from_millis(timeout))
+                .open()?;
 
-            let ps = PortSettings {
-                baud_rate: baud,
-                char_size: CharSize::Bits8,
-                parity: Parity::ParityNone,
-                stop_bits: StopBits::Stop1,
-                flow_control: FlowControl::FlowNone,
-            };
-            port.configure(&ps)?;
+            // let ps = PortSettings {
+            //     baud_rate: baud,
+            //     char_size: CharSize::Bits8,
+            //     parity: Parity::ParityNone,
+            //     stop_bits: StopBits::Stop1,
+            //     flow_control: FlowControl::FlowNone,
+            // };
+            // port.configure(&ps)?;
 
             let mp = Arc::new(Mutex::new(port));
 
