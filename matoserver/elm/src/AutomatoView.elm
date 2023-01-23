@@ -13,8 +13,9 @@ import Element.Font as EF
 import Element.Input as EI
 import Json.Decode as JD
 import Json.Encode as JE
+import Messages exposing (AutomatoMsg)
 import MsCommon as MS
-import Payload exposing (AutomatoMsg)
+import Payload
 import Round as R
 import SerialError
 import Set

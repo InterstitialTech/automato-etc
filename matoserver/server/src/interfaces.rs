@@ -1,4 +1,5 @@
-use crate::data::{AutomatoMsg, ServerData};
+use crate::data::ServerData;
+use crate::messages::AutomatoMsg;
 use crate::messages::{PublicMessage, ServerResponse};
 use crate::serial_error;
 use automato::automatomsg as am;

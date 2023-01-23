@@ -5,12 +5,13 @@ mod data;
 mod interfaces;
 mod messages;
 mod util;
+use crate::data::ServerData;
 use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use automato::automatomsg as am;
 use config::Config;
-use data::{AutomatoMsg, ServerData};
 use log::{error, info};
+// use messages::AutomatoMsg;
 use messages::{PublicMessage, ServerResponse};
 use serde_json;
 use std::path::Path;
@@ -196,8 +197,7 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                     am::Writemem,
                     am::ReadField,
                     am::ReadFieldReply,
-                    am::PayloadEnum,
-                    AutomatoMsg
+                    am::PayloadEnum
                 )
                 .unwrap();
                 let output = String::from_utf8(target).unwrap();
@@ -225,6 +225,27 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 let output = String::from_utf8(target).unwrap();
                 let outf = ed
                     .join("SerialError.elm")
+                    .to_str()
+                    .ok_or(simple_error!("bad path"))?
+                    .to_string();
+                util::write_string(outf.as_str(), output.as_str())?;
+                println!("wrote file: {}", outf);
+            }
+
+            {
+                let mut target = vec![];
+                elm_rs::export!(
+                    "Messages",
+                    &mut target,
+                    messages::AutomatoMsg,
+                    messages::WhatMsg,
+                    messages::WhatError
+                )
+                .unwrap();
+
+                let output = String::from_utf8(target).unwrap();
+                let outf = ed
+                    .join("Messages.elm")
                     .to_str()
                     .ok_or(simple_error!("bad path"))?
                     .to_string();
@@ -275,7 +296,6 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
 
             info!("config: {:?}", config);
 
-            // let mut port = serial::open(port)?;
             let port = serialport::new(port, baud)
                 .data_bits(serialport::DataBits::Eight)
                 .flow_control(serialport::FlowControl::None)
@@ -283,15 +303,6 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 .stop_bits(serialport::StopBits::One)
                 .timeout(Duration::from_millis(timeout))
                 .open()?;
-
-            // let ps = PortSettings {
-            //     baud_rate: baud,
-            //     char_size: CharSize::Bits8,
-            //     parity: Parity::ParityNone,
-            //     stop_bits: StopBits::Stop1,
-            //     flow_control: FlowControl::FlowNone,
-            // };
-            // port.configure(&ps)?;
 
             let mp = Arc::new(Mutex::new(port));
 

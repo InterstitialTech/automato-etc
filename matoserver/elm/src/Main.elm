@@ -98,6 +98,7 @@ type alias Model =
     , timezone : Time.Zone
     , savedRoute : SavedRoute
     , fontsize : Int
+    , requestIdCount : Int
     }
 
 
@@ -502,7 +503,11 @@ actualupdate msg model =
                                     handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
 
                                 ( _, Payload.PeReadinforeply info ) ->
-                                    handleAutomatoView model (AutomatoView.init am.id info)
+                                    handleAutomatoView model
+                                        (AutomatoView.init am.id
+                                            info
+                                         -- model.requestIdCount
+                                        )
 
                                 _ ->
                                     ( model, Cmd.none )
@@ -605,7 +610,12 @@ handleAutomatoView model ( nm, cmd ) =
             ( displayMessageDialog { model | state = AutomatoView nm } e, Cmd.none )
 
         AutomatoView.SendAutomatoMsg am what ->
-            ( { model | state = AutomatoView nm }
+            ( { model
+                | state = AutomatoView nm
+                , requestIdCount = 0
+
+                -- , requestIdCount = nm.requestIdCount  TODO fix
+              }
             , sendPIMsgExp model.location (PI.SendAutomatoMsg am) (PublicReplyData what)
             )
 
@@ -660,6 +670,7 @@ init flags url key zone fontsize =
             , timezone = zone
             , savedRoute = { route = Top, save = False }
             , fontsize = fontsize
+            , requestIdCount = 0
             }
 
         setkeys =
