@@ -485,18 +485,6 @@ actualupdate msg model =
 
                 Ok uiresponse ->
                     case uiresponse of
-                        -- TI.ProjectList x ->
-                        --     case stateLogin state of
-                        --         Just login ->
-                        --             ( { model | state = ProjectListing (ProjectListing.init x) login }, Cmd.none )
-                        --         Nothing ->
-                        --             ( model, Cmd.none )
-                        -- TI.ProjectEdit x ->
-                        --     case stateLogin state of
-                        --         Just login ->
-                        --             ( { model | state = ProjectEdit (ProjectEdit.initEdit x.project x.members) login }, Cmd.none )
-                        --         Nothing ->
-                        --             ( model, Cmd.none )
                         PI.ServerError e ->
                             ( displayMessageDialog model <| e, Cmd.none )
 
@@ -515,6 +503,17 @@ actualupdate msg model =
 
                                 ( _, Payload.PeReadinforeply info ) ->
                                     handleAutomatoView model (AutomatoView.init am.id info)
+
+                                _ ->
+                                    ( model, Cmd.none )
+
+                        PI.SerialError se ->
+                            case model.state of
+                                AutomatoView av ->
+                                    handleAutomatoView model (AutomatoView.onSerialError se what av)
+
+                                DisplayMessage _ (AutomatoView av) ->
+                                    handleAutomatoView model (AutomatoView.onSerialError se what av)
 
                                 _ ->
                                     ( model, Cmd.none )

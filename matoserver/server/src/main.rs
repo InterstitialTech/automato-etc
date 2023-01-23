@@ -13,9 +13,11 @@ use data::{AutomatoMsg, ServerData};
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
 use serde_json;
+use std::path::Path;
 // use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
+mod serial_error;
 use serialport;
-use simple_error::bail;
+use simple_error::{bail, simple_error};
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
@@ -170,37 +172,65 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
         .arg(
             Arg::new("writeelmbindings")
                 .long("writeelmbindings")
-                .value_name("FILE")
-                .help("Write elmbindings file")
+                .value_name("DIR")
+                .help("Write elmbindings directory")
                 .takes_value(true),
         )
         .get_matches();
 
     match matches.value_of("writeelmbindings") {
-        Some(exportfile) => {
-            let mut target = vec![];
-            // elm_rs provides a macro for conveniently creating an Elm module with everything needed
-            elm_rs::export!(
-                "Payload",
-                &mut target,
-                am::RemoteInfo,
-                am::Pinval,
-                am::AnalogPinval,
-                am::Pinmode,
-                am::Readmem,
-                am::ReadmemReply,
-                am::Writemem,
-                am::ReadField,
-                am::ReadFieldReply,
-                am::PayloadEnum,
-                AutomatoMsg
-            )
-            .unwrap();
-            let output = String::from_utf8(target).unwrap();
+        Some(exportdir) => {
+            let ed = Path::new(exportdir);
+            {
+                let mut target = vec![];
+                // elm_rs provides a macro for conveniently creating an Elm module with everything needed
+                elm_rs::export!(
+                    "Payload",
+                    &mut target,
+                    am::RemoteInfo,
+                    am::Pinval,
+                    am::AnalogPinval,
+                    am::Pinmode,
+                    am::Readmem,
+                    am::ReadmemReply,
+                    am::Writemem,
+                    am::ReadField,
+                    am::ReadFieldReply,
+                    am::PayloadEnum,
+                    AutomatoMsg
+                )
+                .unwrap();
+                let output = String::from_utf8(target).unwrap();
+                let outf = ed
+                    .join("Payload.elm")
+                    .to_str()
+                    .ok_or(simple_error!("bad path"))?
+                    .to_string();
+                util::write_string(outf.as_str(), output.as_str())?;
 
-            util::write_string(exportfile, output.as_str())?;
+                println!("wrote file: {}", outf);
+            }
 
-            println!("wrote file: {}", exportfile);
+            {
+                let mut target = vec![];
+                elm_rs::export!(
+                    "SerialError",
+                    &mut target,
+                    serial_error::Error,
+                    serial_error::ErrorKind,
+                    serial_error::IOErrorKind
+                )
+                .unwrap();
+
+                let output = String::from_utf8(target).unwrap();
+                let outf = ed
+                    .join("SerialError.elm")
+                    .to_str()
+                    .ok_or(simple_error!("bad path"))?
+                    .to_string();
+                util::write_string(outf.as_str(), output.as_str())?;
+                println!("wrote file: {}", outf);
+            }
 
             return Ok(());
         }
@@ -246,7 +276,7 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
             info!("config: {:?}", config);
 
             // let mut port = serial::open(port)?;
-            let mut port = serialport::new(port, baud)
+            let port = serialport::new(port, baud)
                 .data_bits(serialport::DataBits::Eight)
                 .flow_control(serialport::FlowControl::None)
                 .parity(serialport::Parity::None)

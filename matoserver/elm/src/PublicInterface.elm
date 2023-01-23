@@ -10,6 +10,7 @@ import Data exposing (AutomatoId)
 import Json.Decode as JD
 import Json.Encode as JE
 import Payload
+import SerialError as SE
 
 
 type SendMsg
@@ -21,6 +22,7 @@ type ServerResponse
     = ServerError String
     | AutomatoList (List Data.ListAutomato)
     | AutomatoMsg Payload.AutomatoMsg
+    | SerialError SE.Error
 
 
 showServerResponse : ServerResponse -> String
@@ -34,6 +36,9 @@ showServerResponse sr =
 
         AutomatoMsg _ ->
             "AutomatoMsg"
+
+        SerialError _ ->
+            "SerialError"
 
 
 encodeSendMsg : SendMsg -> JE.Value
@@ -69,6 +74,10 @@ serverResponseDecoder =
                     "automatomsg" ->
                         JD.at [ "content" ] Payload.automatoMsgDecoder
                             |> JD.map AutomatoMsg
+
+                    "serial error" ->
+                        JD.at [ "content" ] SE.errorDecoder
+                            |> JD.map SerialError
 
                     wat ->
                         JD.succeed

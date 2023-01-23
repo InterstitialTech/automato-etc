@@ -16,6 +16,7 @@ import Json.Encode as JE
 import MsCommon as MS
 import Payload exposing (AutomatoMsg)
 import Round as R
+import SerialError
 import Set
 import TDict exposing (TDict)
 import TSet exposing (TSet)
@@ -112,6 +113,21 @@ readField rfr =
     { address = rfr.offset
     , length = rfr.length
     }
+
+
+onSerialError : SerialError.Error -> Maybe String -> Model -> ( Model, Command )
+onSerialError se mbwhat model =
+    -- ( { model | pendingMsgs = List.drop 1 model.pendingMsgs }
+    -- , ShowError (JE.encode 2 (SerialError.errorEncoder se))
+    -- )
+    ( { model | pendingMsgs = List.drop 1 model.pendingMsgs }
+    , case List.head model.pendingMsgs of
+        Just pm ->
+            SendAutomatoMsg pm.automatoMsg pm.what
+
+        Nothing ->
+            None
+    )
 
 
 onAutomatoMsg : AutomatoMsg -> Maybe String -> Model -> ( Model, Command )

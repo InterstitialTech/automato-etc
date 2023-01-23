@@ -1,10 +1,9 @@
 use elm_rs::{Elm, ElmJson};
 use num_derive::{FromPrimitive, ToPrimitive};
 use serde::de::Deserializer;
-use serde::ser::{SerializeSeq, Serializer};
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use serialport;
-use std::io::{Read, Write};
 use std::mem::size_of;
 // --------------------------------------------------------
 // message structs.
@@ -699,18 +698,25 @@ pub unsafe fn read_message(
     port: &mut dyn serialport::SerialPort,
     msg: &mut Msgbuf,
     fromid: &mut u8,
-) -> Result<bool, serialport::Error> {
+) -> Result<(), serialport::Error> {
     let mut monobuf = [0; 1];
 
-    // port.read_exact(&mut monobuf)?;
-    println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf));
-    println!("readexact 1 {}", monobuf[0]);
-    if monobuf[0] as char != 'm' {
-        return Ok(false);
+    // println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf));
+    // println!("readexact 1 {}", monobuf[0]);
+    // if monobuf[0] as char != 'm' {
+    //     return Ok(false);
+    // }
+    loop {
+        println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf)?);
+        println!("readexact 1 {}", monobuf[0]);
+        // port.read_exact(&mut monobuf)?;
+        if monobuf[0] as char == 'm' {
+            break;
+        }
     }
 
     // port.read_exact(&mut monobuf)?;
-    println!("readexact 2 rs {:?}", port.read_exact(&mut monobuf));
+    println!("readexact 2 rs {:?}", port.read_exact(&mut monobuf)?);
     println!("readexact 2 {}", monobuf[0]);
     *fromid = monobuf[0];
 
@@ -723,5 +729,5 @@ pub unsafe fn read_message(
         port.read_exact(&mut msg.buf[0..sz])?;
     }
 
-    Ok(true)
+    Ok(())
 }
