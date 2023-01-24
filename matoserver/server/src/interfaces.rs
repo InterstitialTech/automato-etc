@@ -35,7 +35,8 @@ pub fn public_interface(
                 am::write_message(&mut **port, &mb, am.id)?;
 
                 let mut fromid: u8 = 0;
-                port.set_timeout(Duration::from_millis(2420))?;
+                // set to more than the hardcoded RHMesh timeout, which is 4000ms
+                port.set_timeout(Duration::from_millis(4420))?;
 
                 match am::read_message(&mut **port, &mut retmsg, &mut fromid) {
                     Ok(()) => {
@@ -55,14 +56,8 @@ pub fn public_interface(
                             content: serde_json::to_value(rm)?,
                         })
                     }
-                    // Ok(false) => {
-                    //     println!("here");
-                    //     Ok(ServerResponse {
-                    //         what: "parse".to_string(),
-                    //         content: serde_json::Value::Null,
-                    //     })
-                    // }
                     Err(e) => {
+                        println!("read_message err: {:?}", e);
                         let se = serial_error::Error::from(e);
                         Ok(ServerResponse {
                             what: "serial error".to_string(),
