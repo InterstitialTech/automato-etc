@@ -257,7 +257,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             // }
         } else {
             match am::read_message(&mut *port, &mut retmsg, &mut fromid) {
-                Ok(true) => {
+                Ok(()) => {
                     println!("reply from: {}", fromid);
                     // for i in 0..retmsg.buf.len() {
                     //     let c = retmsg.buf[i];
@@ -268,9 +268,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     } else {
                         am::print_payload(&retmsg.payload);
                     }
-                }
-                Ok(false) => {
-                    println!("here");
                 }
                 Err(e) => {
                     println!("error: {:?}", e);
