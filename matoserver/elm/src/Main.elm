@@ -73,10 +73,6 @@ type State
     | AutomatoView AutomatoView.Model
 
 
-
--- | AutomatoView AutomatoView.Model (Maybe Data.LoginData)
-
-
 type alias Flags =
     { location : String
     , useragent : String
@@ -136,7 +132,6 @@ routeState model route =
                 ( model.state, Cmd.none )
 
             else
-                -- home page if any, or login page if not logged in.
                 let
                     ( m, c ) =
                         initialPage model
@@ -528,13 +523,7 @@ actualupdate msg model =
                                     ( model, Cmd.none )
 
                         PI.SerialError se ->
-                            case model.state of
-                                -- AutomatoView av ->
-                                --     handleAutomatoView model (AutomatoView.onSerialError se what av)
-                                -- DisplayMessage _ (AutomatoView av) ->
-                                --     handleAutomatoView model (AutomatoView.onSerialError se what av)
-                                _ ->
-                                    ( displayMessageDialog model (JE.encode 2 (SerialError.errorEncoder se)), Cmd.none )
+                            ( displayMessageDialog model (JE.encode 2 (SerialError.errorEncoder se)), Cmd.none )
 
         ( AutomatoMsgReplyData what urd, state ) ->
             case urd of
@@ -637,18 +626,6 @@ actualupdate msg model =
         ( AutomatoViewMsg ms, AutomatoView st ) ->
             handleAutomatoView model (AutomatoView.update ms st model.timezone)
 
-        -- ( WkMsg rkey, ProjectEdit ptm login ) ->
-        --     case rkey of
-        --         Ok key ->
-        --             handleProjectEdit model (ProjectEdit.onWkKeyPress key ptm login) login
-        --         Err _ ->
-        --             ( model, Cmd.none )
-        -- ( WkMsg rkey, ProjectTime ptm login ) ->
-        --     case rkey of
-        --         Ok key ->
-        --             handleProjectTime model (ProjectTime.onWkKeyPress key ptm login model.timezone) login
-        --         Err _ ->
-        --             ( model, Cmd.none )
         ( x, y ) ->
             ( unexpectedMsg model x
             , Cmd.none
@@ -774,12 +751,6 @@ init flags url key zone fontsize =
                 ]
              )
             )
-
-
-
--- initLogin : String -> Seed -> State
--- initLogin appname seed =
---     Login <| Login.initialModel Nothing appname seed
 
 
 main : Platform.Program Flags PiModel Msg

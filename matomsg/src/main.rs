@@ -7,8 +7,6 @@ use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 
-// use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
-
 use serialport::SerialPort;
 
 fn main() {
@@ -121,7 +119,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         matches.value_of("timeout"),
     ) {
         (Some(port), Some(baudstr), Some(addrstr), Some(timeout)) => {
-            // let baud = BaudRate::from_speed(baudstr.parse::<usize>()?);
             let baud = baudstr.parse::<u32>()?;
             let addr = addrstr.parse::<u8>()?;
             (port, baud, addr, timeout.parse::<u64>()?)
@@ -218,16 +215,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         .stop_bits(serialport::StopBits::One)
         .timeout(Duration::from_millis(timeout))
         .open()?;
-
-    // let ps = PortSettings {
-    //     baud_rate: baud,
-    //     char_size: CharSize::Bits8,
-    //     parity: Parity::ParityNone,
-    //     stop_bits: StopBits::Stop1,
-    //     flow_control: FlowControl::FlowNone,
-    // };
-    // port.configure(&ps)?;
-    // port.set_timeout(Duration::from_millis(timeout))?;
 
     let debug_reply = false;
     unsafe {

@@ -30,7 +30,7 @@ MapField memoryMap[] =
   , map_field(ServerData, checkInterval, ff_uint32)
   };
 
-Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, sizeof(memoryMap) / sizeof(MapField), true);
+Automato automato(3, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, sizeof(memoryMap) / sizeof(MapField), true);
 
 int8_t output_pin = 33;
 

@@ -19,10 +19,6 @@ type SendMsg
     | SendAutomatoMsg Messages.AutomatoMsg
 
 
-
--- | SendAutomatoMsg Messages.AutomatoMsg String
-
-
 type ServerResponse
     = ServerError String
     | AutomatoList (List Data.ListAutomato)

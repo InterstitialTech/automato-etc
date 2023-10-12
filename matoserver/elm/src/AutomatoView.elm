@@ -118,8 +118,6 @@ init automatoid ai requestIdCount =
             , temperature = Nothing
             , humidity = Nothing
             , fields = Dict.empty
-
-            -- , pendingMsgs = pendingMsgs
             , pendingMsgs = pendingMsgs
             , editedField = Nothing
             , requestIdCount = requestIdCount + List.length pendingMsgs
@@ -145,15 +143,12 @@ readField rfr =
 onSerialError : SerialError.Error -> MsgWhat -> Model -> ( Model, Command )
 onSerialError se mw model =
     let
-        _ =
-            Debug.log "onSerialError: " se
-
-        _ =
-            Debug.log "pending what: " (List.head model.pendingMsgs |> Maybe.map .what)
-
-        _ =
-            Debug.log "incoming what: " mw
-
+        -- _ =
+        --     Debug.log "onSerialError: " se
+        -- _ =
+        --     Debug.log "pending what: " (List.head model.pendingMsgs |> Maybe.map .what)
+        -- _ =
+        --     Debug.log "incoming what: " mw
         pms =
             List.drop 1 model.pendingMsgs
     in
@@ -169,16 +164,14 @@ onSerialError se mw model =
 
 onAutomatoMsg : AutomatoMsg -> MsgWhat -> Model -> ( Model, Command )
 onAutomatoMsg am msgwhat model =
-    let
-        _ =
-            Debug.log "onAutomatoMsg: " am
-
-        _ =
-            Debug.log "pending what: " (List.head model.pendingMsgs |> Maybe.map .what)
-
-        _ =
-            Debug.log "incoming what: " msgwhat
-    in
+    -- let
+    --     _ =
+    --         Debug.log "onAutomatoMsg: " am
+    --     _ =
+    --         Debug.log "pending what: " (List.head model.pendingMsgs |> Maybe.map .what)
+    --     _ =
+    --         Debug.log "incoming what: " msgwhat
+    -- in
     let
         nm0 =
             { model | pendingMsgs = List.drop 1 model.pendingMsgs }
@@ -240,10 +233,10 @@ onAutomatoMsg am msgwhat model =
     ( nm
     , case List.head nm.pendingMsgs of
         Just pm ->
-            let
-                _ =
-                    Debug.log "sending" pm
-            in
+            -- let
+            --     _ =
+            --         Debug.log "sending" pm
+            -- in
             SendAutomatoMsg pm.automatoMsg pm.what
 
         Nothing ->
@@ -512,10 +505,10 @@ update msg model zone =
             ( nm
             , case List.head nm.pendingMsgs of
                 Just pm ->
-                    let
-                        _ =
-                            Debug.log "editupdate sending" pm
-                    in
+                    -- let
+                    --     _ =
+                    --         Debug.log "editupdate sending" pm
+                    -- in
                     SendAutomatoMsg pm.automatoMsg pm.what
 
                 Nothing ->
@@ -533,6 +526,7 @@ update msg model zone =
             ( { model | editedField = Nothing }, None )
 
         EditRefresh ->
+            -- TODO: fix
             -- editUpdates model
             --     |> Maybe.map
             --         (\( nm, _, pend ) ->
@@ -541,7 +535,8 @@ update msg model zone =
             --             )
             --         )
             --     |> Maybe.withDefault ( model, None )
-            Debug.todo "" ( model, None )
+            -- Debug.todo "" ( model, None )
+            ( model, None )
 
         DonePress ->
             ( model, Done )

@@ -11,11 +11,9 @@ use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Res
 use automato::automatomsg as am;
 use config::Config;
 use log::{error, info};
-// use messages::AutomatoMsg;
 use messages::{PublicMessage, ServerResponse};
 use serde_json;
 use std::path::Path;
-// use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
 mod serial_error;
 use serialport;
 use simple_error::{bail, simple_error};
