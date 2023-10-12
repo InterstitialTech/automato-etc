@@ -38,7 +38,7 @@ AutomatoResult ar;
 
 int32_t lastCheck;
 
-// keep these the same as what's in EEPROM.
+// keep these the same as what's in flash.
 bool lowertargethumidity_is_in_eep;
 float lowertargethumidity_eep;
 bool uppertargethumidity_is_in_eep;
@@ -68,99 +68,13 @@ void readFromFlash()
   prefs.end();
 }
 
-
-float origLTH;
-float origUTH;
-
-
-void setup()
-{
-  pinMode(PIN_LORA_RST, INPUT); // Let the pin float.
-  pinMode(PIN_LED, OUTPUT);
-
-  // Disable SPI devices until needed.
-  pinMode(PIN_LCD_CS, OUTPUT);
-  digitalWrite(PIN_LCD_CS, HIGH);
-  pinMode(PIN_TCH_CS, OUTPUT);
-  digitalWrite(PIN_TCH_CS, HIGH);
-  pinMode(PIN_SD_CS, OUTPUT);
-  digitalWrite(PIN_SD_CS, HIGH);
-
-  Serial.begin(115200);
-
-  // EEPROM.begin(EEPROM_SIZE);
-
-  readFromFlash();
-
-  origLTH = lowertargethumidity_eep;
-  origUTH = uppertargethumidity_eep;
-
-
-  automato.init(915.0, 20);
-
-  Serial.println("automato remote control server");
-
-  Serial.print("my mac address:");
-  Serial.println(Automato::macAddress());
-
-  // set serverdata vals.
-  strcpy(serverdata.name, "humidor");
-
-  // serverdata.lowertargethumidity = 35;
-  // serverdata.uppertargethumidity = 39;
-
-  // saveLTHIfChanged();
-  // saveUTHIfChanged();
-
-  serverdata.lowertargethumidity = lowertargethumidity_eep;
-  serverdata.uppertargethumidity = uppertargethumidity_eep;
-  if (lowertargethumidity_is_in_eep)
-    serverdata.lowertargethumidity = lowertargethumidity_eep;
-  else
-    serverdata.lowertargethumidity = 45;
-
-  if (uppertargethumidity_is_in_eep)
-    serverdata.uppertargethumidity = uppertargethumidity_eep;
-  else
-    serverdata.uppertargethumidity = 49;
-
-  serverdata.loops = 0;
-  serverdata.checkInterval = 5000;
-
-  lastCheck = 0;
-
-  pinMode(output_pin, OUTPUT);
-
-}
-
-
-void printargets()
-{
-  Serial.print("origLTH ");
-  Serial.println(origLTH);
-  Serial.print("origUTH ");
-  Serial.println(origUTH);
-  Serial.print("lowertargethumidity_is_in_eep ");
-  Serial.println(lowertargethumidity_is_in_eep);
-  Serial.print("lowertargethumidity_eep ");
-  Serial.println(lowertargethumidity_eep);
-  Serial.print("uppertargethumidity_is_in_eep ");
-  Serial.println(uppertargethumidity_is_in_eep);
-  Serial.print("uppertargethumidity_eep ");
-  Serial.println(uppertargethumidity_eep);
-  Serial.print("serverdata LTH ");
-  Serial.println(serverdata.lowertargethumidity);
-  Serial.print("serverdata UTH ");
-  Serial.println(serverdata.uppertargethumidity);
-}
-
 void saveLTHIfChanged()
 {
   if (!lowertargethumidity_is_in_eep || (lowertargethumidity_eep != serverdata.lowertargethumidity))
   {
     prefs.begin("prefs", RW_MODE);
     prefs.putFloat("lowerTH", serverdata.lowertargethumidity);
-    Serial.println("saving LTH!");
+    Serial.println("saving lowerTargetHumidity!");
     lowertargethumidity_is_in_eep = true;
     lowertargethumidity_eep = serverdata.lowertargethumidity;
     prefs.end();
@@ -177,7 +91,7 @@ void saveUTHIfChanged()
   {
     prefs.begin("prefs", RW_MODE);
     prefs.putFloat("upperTH", serverdata.uppertargethumidity);
-    Serial.println("saving UTH!");
+    Serial.println("saving upperTargethumidity!");
     uppertargethumidity_is_in_eep = true;
     uppertargethumidity_eep = serverdata.uppertargethumidity;
     prefs.end();
@@ -188,19 +102,55 @@ void saveUTHIfChanged()
   }
 }
 
+void setup()
+{
+  pinMode(PIN_LORA_RST, INPUT); // Let the pin float.
+  pinMode(PIN_LED, OUTPUT);
 
+  // Disable SPI devices until needed.
+  pinMode(PIN_LCD_CS, OUTPUT);
+  digitalWrite(PIN_LCD_CS, HIGH);
+  pinMode(PIN_TCH_CS, OUTPUT);
+  digitalWrite(PIN_TCH_CS, HIGH);
+  pinMode(PIN_SD_CS, OUTPUT);
+  digitalWrite(PIN_SD_CS, HIGH);
 
-// void loop() {
-  // if lower/upper targets changed, save to eeprom.
-  // saveLTHIfChanged();
-// }
+  Serial.begin(115200);
+
+  readFromFlash();
+
+  automato.init(915.0, 20);
+
+  Serial.println("automato remote control server");
+
+  Serial.print("my mac address:");
+  Serial.println(Automato::macAddress());
+
+  // set serverdata vals.
+  strcpy(serverdata.name, "humidor");
+
+  if (lowertargethumidity_is_in_eep)
+    serverdata.lowertargethumidity = lowertargethumidity_eep;
+  else
+    serverdata.lowertargethumidity = 45;
+
+  if (uppertargethumidity_is_in_eep)
+    serverdata.uppertargethumidity = uppertargethumidity_eep;
+  else
+    serverdata.uppertargethumidity = 49;
+
+  serverdata.loops = 0;
+  serverdata.checkInterval = 5000;
+
+  // init to 0 millis from start.
+  lastCheck = 0;
+
+  pinMode(output_pin, OUTPUT);
+
+}
 
 void loop()
 {
-  // automato.doSerial();
-
-  printargets();
-
   if (!(ar = automato.doRemoteControl()))
   {
     Serial.println("-------- failure ---------");
