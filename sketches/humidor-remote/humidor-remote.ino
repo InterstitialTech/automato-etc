@@ -5,6 +5,11 @@
 #include <RH_RF95.h>
 #include <AutomatoMsg.h>
 #include <Automato.h>
+#include <Preferences.h>
+
+Preferences prefs;
+#define RO_MODE true
+#define RW_MODE false
 
 // ideally this would go in a shared header file,
 struct ServerData {
@@ -17,21 +22,85 @@ struct ServerData {
 
 ServerData serverdata;
 
-MapField memoryMap[] = 
+MapField memoryMap[] =
   { map_field(ServerData, name, ff_char)
   , map_field(ServerData, lowertargethumidity, ff_float)
   , map_field(ServerData, uppertargethumidity, ff_float)
   , map_field(ServerData, loops, ff_uint32)
   , map_field(ServerData, checkInterval, ff_uint32)
-  }; 
+  };
 
-Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, sizeof(memoryMap) / sizeof(MapField), true);
+Automato automato(3, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, sizeof(memoryMap) / sizeof(MapField), true);
 
 int8_t output_pin = 33;
 
 AutomatoResult ar;
 
 int32_t lastCheck;
+
+// keep these the same as what's in flash.
+bool lowertargethumidity_is_in_eep;
+float lowertargethumidity_eep;
+bool uppertargethumidity_is_in_eep;
+float uppertargethumidity_eep;
+
+void readFromFlash()
+{
+  prefs.begin("prefs", RO_MODE);
+
+  if (prefs.isKey("lowerTH")) {
+    lowertargethumidity_is_in_eep = true;
+    lowertargethumidity_eep = prefs.getFloat("lowerTH");
+  }
+  else
+  {
+    lowertargethumidity_is_in_eep = false;
+  }
+  if (prefs.isKey("upperTH")) {
+    uppertargethumidity_is_in_eep = true;
+    uppertargethumidity_eep = prefs.getFloat("upperTH");
+  }
+  else
+  {
+    uppertargethumidity_is_in_eep = false;
+  }
+
+  prefs.end();
+}
+
+void saveLTHIfChanged()
+{
+  if (!lowertargethumidity_is_in_eep || (lowertargethumidity_eep != serverdata.lowertargethumidity))
+  {
+    prefs.begin("prefs", RW_MODE);
+    prefs.putFloat("lowerTH", serverdata.lowertargethumidity);
+    Serial.println("saving lowerTargetHumidity!");
+    lowertargethumidity_is_in_eep = true;
+    lowertargethumidity_eep = serverdata.lowertargethumidity;
+    prefs.end();
+  }
+  else
+  {
+    Serial.println("NOT saving LTH!");
+  }
+}
+
+void saveUTHIfChanged()
+{
+  if (!uppertargethumidity_is_in_eep || (uppertargethumidity_eep != serverdata.uppertargethumidity))
+  {
+    prefs.begin("prefs", RW_MODE);
+    prefs.putFloat("upperTH", serverdata.uppertargethumidity);
+    Serial.println("saving upperTargethumidity!");
+    uppertargethumidity_is_in_eep = true;
+    uppertargethumidity_eep = serverdata.uppertargethumidity;
+    prefs.end();
+  }
+  else
+  {
+    Serial.println("NOT saving UTH!");
+  }
+}
 
 void setup()
 {
@@ -48,6 +117,8 @@ void setup()
 
   Serial.begin(115200);
 
+  readFromFlash();
+
   automato.init(915.0, 20);
 
   Serial.println("automato remote control server");
@@ -55,18 +126,28 @@ void setup()
   Serial.print("my mac address:");
   Serial.println(Automato::macAddress());
 
-
+  // set serverdata vals.
   strcpy(serverdata.name, "humidor");
-  serverdata.lowertargethumidity = 50;
-  serverdata.uppertargethumidity = 53;
+
+  if (lowertargethumidity_is_in_eep)
+    serverdata.lowertargethumidity = lowertargethumidity_eep;
+  else
+    serverdata.lowertargethumidity = 45;
+
+  if (uppertargethumidity_is_in_eep)
+    serverdata.uppertargethumidity = uppertargethumidity_eep;
+  else
+    serverdata.uppertargethumidity = 49;
+
   serverdata.loops = 0;
   serverdata.checkInterval = 5000;
 
+  // init to 0 millis from start.
   lastCheck = 0;
 
   pinMode(output_pin, OUTPUT);
-}
 
+}
 
 void loop()
 {
@@ -79,6 +160,10 @@ void loop()
     Serial.println(ar.resultCode());
   }
 
+  // if lower/upper targets changed, save to eeprom.
+  saveLTHIfChanged();
+  saveUTHIfChanged();
+
   uint32_t now = millis();
   if (now - lastCheck > serverdata.checkInterval) {
     lastCheck = now;
@@ -86,7 +171,7 @@ void loop()
     automato.readTempHumidity();
     float humidity = automato.getHumidity();
 
-    // turn on power if below our humidity target 
+    // turn on power if below our humidity target
     if (humidity < serverdata.lowertargethumidity) {
       Serial.println("active output: ");
       digitalWrite(output_pin, HIGH);
