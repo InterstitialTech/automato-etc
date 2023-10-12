@@ -5,11 +5,11 @@
 #include <RH_RF95.h>
 #include <AutomatoMsg.h>
 #include <Automato.h>
-#include <EEPROM.h>
+#include <Preferences.h>
 
-#define EEPROM_SIZE 8
-
-
+Preferences prefs;
+#define RO_MODE true
+#define RW_MODE false
 
 // ideally this would go in a shared header file,
 struct ServerData {
@@ -46,22 +46,26 @@ float uppertargethumidity_eep;
 
 void readFromFlash()
 {
-  bool all255 = true;
-  for (int i = 0; i < 4; ++i)
-  {
-    *((unsigned char*)&lowertargethumidity_eep + i) = EEPROM.read(i);
-    if (*((unsigned char*)&lowertargethumidity_eep + i) != 255)
-      all255 = false;
-  }
-  lowertargethumidity_is_in_eep = !all255;
+  prefs.begin("prefs", RO_MODE);
 
-  for (int i = 0; i < 4; ++i)
-  {
-    *((unsigned char*)&uppertargethumidity_eep + i) = EEPROM.read(i + 4);
-    if (*((unsigned char*)&uppertargethumidity_eep + i) != 255)
-      all255 = false;
+  if (prefs.isKey("lowerTH")) {
+    lowertargethumidity_is_in_eep = true;
+    lowertargethumidity_eep = prefs.getFloat("lowerTH");
   }
-  uppertargethumidity_is_in_eep = !all255;
+  else
+  {
+    lowertargethumidity_is_in_eep = false;
+  }
+  if (prefs.isKey("upperTH")) {
+    uppertargethumidity_is_in_eep = true;
+    uppertargethumidity_eep = prefs.getFloat("upperTH");
+  }
+  else
+  {
+    uppertargethumidity_is_in_eep = false;
+  }
+
+  prefs.end();
 }
 
 
@@ -84,7 +88,7 @@ void setup()
 
   Serial.begin(115200);
 
-  EEPROM.begin(EEPROM_SIZE);
+  // EEPROM.begin(EEPROM_SIZE);
 
   readFromFlash();
 
@@ -154,17 +158,12 @@ void saveLTHIfChanged()
 {
   if (!lowertargethumidity_is_in_eep || (lowertargethumidity_eep != serverdata.lowertargethumidity))
   {
+    prefs.begin("prefs", RW_MODE);
+    prefs.putFloat("lowerTH", serverdata.lowertargethumidity);
     Serial.println("saving LTH!");
-    for (int i = 0; i < 4; ++i)
-    {
-      Serial.print("writing: ");
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.println(*((unsigned char*)(&serverdata.lowertargethumidity + i)));
-      EEPROM.write(i, *((unsigned char*)(&serverdata.lowertargethumidity + i)));
-    }
     lowertargethumidity_is_in_eep = true;
     lowertargethumidity_eep = serverdata.lowertargethumidity;
+    prefs.end();
   }
   else
   {
@@ -176,23 +175,20 @@ void saveUTHIfChanged()
 {
   if (!uppertargethumidity_is_in_eep || (uppertargethumidity_eep != serverdata.uppertargethumidity))
   {
+    prefs.begin("prefs", RW_MODE);
+    prefs.putFloat("upperTH", serverdata.uppertargethumidity);
     Serial.println("saving UTH!");
-    for (int i = 0; i < 4; ++i)
-    {
-      Serial.print("writing: ");
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.println(*((unsigned char*)(&serverdata.uppertargethumidity + i)));
-      EEPROM.write(i + 4, *((unsigned char*)(&serverdata.uppertargethumidity + i)));
-    }
     uppertargethumidity_is_in_eep = true;
     uppertargethumidity_eep = serverdata.uppertargethumidity;
+    prefs.end();
   }
   else
   {
     Serial.println("NOT saving UTH!");
   }
 }
+
+
 
 // void loop() {
   // if lower/upper targets changed, save to eeprom.
