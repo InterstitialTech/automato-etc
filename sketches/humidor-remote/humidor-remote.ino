@@ -30,7 +30,7 @@ MapField memoryMap[] =
   , map_field(ServerData, checkInterval, ff_uint32)
   };
 
-Automato automato(3, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, sizeof(memoryMap) / sizeof(MapField), true);
+Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, sizeof(memoryMap) / sizeof(MapField), true);
 
 int8_t output_pin = 33;
 
@@ -119,7 +119,8 @@ void setup()
 
   readFromFlash();
 
-  automato.init(915.0, 20);
+  // automato.init(915.0, 20);
+  automato.init(915.0, 5);
 
   Serial.println("automato remote control server");
 
@@ -127,7 +128,7 @@ void setup()
   Serial.println(Automato::macAddress());
 
   // set serverdata vals.
-  strcpy(serverdata.name, "humidor");
+  strcpy(serverdata.name, "humidor-2");
 
   if (lowertargethumidity_is_in_eep)
     serverdata.lowertargethumidity = lowertargethumidity_eep;
