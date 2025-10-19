@@ -24,7 +24,7 @@ MapField memoryMap[] =
   , map_field(ServerData, loops, ff_int32)
   }; 
 
-Automato automato(2, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 3, true);
+Automato automato(1, (void*)&serverdata, sizeof(ServerData), (void*)&memoryMap, 3, true);
 
 void setup()
 {
