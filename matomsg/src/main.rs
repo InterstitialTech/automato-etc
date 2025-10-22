@@ -53,11 +53,20 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
-            Arg::new("address")
-                .short('a')
+            Arg::new("lora address")
+                .short('l')
                 .long("address")
                 .value_name("0-255")
                 .help("lora network address of an automato")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("esp-now address")
+                .short('e')
+                .long("address")
+                .value_name("hex mac address, like: e4b3238d663c")
+                .help("esp-now network address of an automato")
                 .required(true)
                 .takes_value(true),
         )
@@ -112,16 +121,42 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         )
         .get_matches();
 
-    let (port, baud, automatoaddr, timeout) = match (
+    let (mb_automatoLora_addr, mb_automatoEspnow_addr) = (
+        matches
+            .value_of("lora address")
+            .and_then(|x| match x.parse::<u8>() {
+                Ok(x) => Some(x),
+                Err(e) => {
+                    println!("lora address parse error: {}", e);
+                    None
+                }
+            }),
+        matches.value_of("esp-now address").and_then(|x| {
+            let mut out = [0u8; 6];
+            match hex::decode_to_slice(x, &mut out as &mut [u8]) {
+                Ok(_) => Some(out),
+                Err(e) => {
+                    println!("lora address parse error: {}", e);
+                    None
+                }
+            }
+        }),
+    );
+
+    match (mb_automatoLora_addr, mb_automatoEspnow_addr) {
+        (Some(_), Some(_)) => bail!("only lora OR esp-now address allowed, not both."),
+        (None, None) => bail!("one of lora OR esp-now address is required."),
+        _ => (),
+    };
+
+    let (port, baud, timeout) = match (
         matches.value_of("port"),
         matches.value_of("baud"),
-        matches.value_of("address"),
         matches.value_of("timeout"),
     ) {
-        (Some(port), Some(baudstr), Some(addrstr), Some(timeout)) => {
+        (Some(port), Some(baudstr), Some(timeout)) => {
             let baud = BaudRate::from_speed(baudstr.parse::<usize>()?);
-            let addr = addrstr.parse::<u8>()?;
-            (port, baud, addr, timeout.parse::<u64>()?)
+            (port, baud, timeout.parse::<u64>()?)
         }
         _ => bail!("arg failure"),
     };
@@ -221,7 +256,11 @@ fn err_main() -> Result<(), Box<dyn Error>> {
 
     let debug_reply = false;
     unsafe {
-        am::write_message(&mut port, &mb, automatoaddr)?;
+        match (mb_automatoLora_addr, mb_automatoEspnow_addr) {
+            (Some(loraaddr), _) => am::write_lora_message(&mut port, &mb, loraaddr)?,
+            (_, Some(espnowaddr)) => am::write_espnow_message(&mut port, &mb, espnowaddr)?,
+            _ => bail!("automato network address error"),
+        };
 
         let mut fromid: u8 = 0;
         port.set_timeout(Duration::from_millis(timeout));

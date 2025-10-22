@@ -680,15 +680,29 @@ pub unsafe fn print_payload(p: &Payload) {
     }
 }
 
-pub unsafe fn write_message(
+pub unsafe fn write_lora_message(
     port: &mut serial::SystemPort,
     msg: &Msgbuf,
     toid: u8,
 ) -> Result<(), serial::Error> {
     let sz = payload_size(&msg.payload);
 
-    port.write(&['m' as u8])?;
+    port.write(&['l' as u8])?;
     port.write(&[toid as u8])?;
+    port.write(&[sz as u8])?;
+    port.write(&msg.buf[0..sz + 1])?;
+
+    Ok(())
+}
+pub unsafe fn write_espnow_message(
+    port: &mut serial::SystemPort,
+    msg: &Msgbuf,
+    toid: [u8; 6],
+) -> Result<(), serial::Error> {
+    let sz = payload_size(&msg.payload);
+
+    port.write(&['e' as u8])?;
+    port.write(&toid[0..6])?;
     port.write(&[sz as u8])?;
     port.write(&msg.buf[0..sz + 1])?;
 
