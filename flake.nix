@@ -17,6 +17,7 @@
             nativeBuildInputs = with pkgs; [
               cargo
               cargo-watch
+              cargo-edit
               rustc
               rustfmt
               rust-analyzer
