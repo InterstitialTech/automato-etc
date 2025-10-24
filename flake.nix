@@ -22,6 +22,7 @@
               rustfmt
               rust-analyzer
               openssl.dev
+              udev
               pkgconfig
               elm2nix
               elmPackages.elm

@@ -13,9 +13,11 @@ import Element.Font as EF
 import Element.Input as EI
 import Json.Decode as JD
 import Json.Encode as JE
+import Messages exposing (AutomatoMsg)
 import MsCommon as MS
-import Payload exposing (AutomatoMsg)
+import Payload
 import Round as R
+import SerialError
 import Set
 import TDict exposing (TDict)
 import TSet exposing (TSet)
@@ -44,7 +46,13 @@ type alias Field =
 
 type alias PendingMsg =
     { automatoMsg : AutomatoMsg
-    , what : Maybe String
+    , what : MsgWhat
+    }
+
+
+type alias MsgWhat =
+    { id : Int
+    , field : Maybe Int
     }
 
 
@@ -56,13 +64,14 @@ type alias Model =
     , fields : Dict Int Field
     , pendingMsgs : List PendingMsg
     , editedField : Maybe ( Int, String )
+    , requestIdCount : Int
     }
 
 
 type Command
     = Done
     | ShowError String
-    | SendAutomatoMsg AutomatoMsg (Maybe String)
+    | SendAutomatoMsg AutomatoMsg MsgWhat
     | None
 
 
@@ -71,30 +80,47 @@ headerStyle =
     [ EF.bold ]
 
 
-init : Int -> Payload.RemoteInfo -> ( Model, Command )
-init id ai =
+init : Int -> Payload.RemoteInfo -> Int -> ( Model, Command )
+init automatoid ai requestIdCount =
     let
-        pendingMsgs =
-            [ { automatoMsg = { id = id, message = Payload.PeReadtemperature }, what = Nothing }
-            , { automatoMsg = { id = id, message = Payload.PeReadhumidity }, what = Nothing }
+        pendingMsgs0 =
+            [ { automatoMsg = { id = automatoid, message = Payload.PeReadtemperature }
+              , what = { id = 0, field = Nothing }
+              }
+            , { automatoMsg = { id = automatoid, message = Payload.PeReadhumidity }
+              , what = { id = 0, field = Nothing }
+              }
             ]
                 ++ (List.range 0 (ai.fieldcount - 1)
                         |> List.map
                             (\i ->
-                                { automatoMsg = { id = id, message = Payload.PeReadfield { index = i } }
-                                , what = Nothing
+                                { automatoMsg = { id = automatoid, message = Payload.PeReadfield { index = i } }
+                                , what = { id = 0, field = Nothing }
                                 }
                             )
                    )
 
+        -- add sequential ids
+        pendingMsgs =
+            pendingMsgs0
+                |> List.indexedMap
+                    (\idx item ->
+                        let
+                            w =
+                                item.what
+                        in
+                        { item | what = { w | id = idx + requestIdCount } }
+                    )
+
         model =
             { automatoinfo = ai
-            , id = id
+            , id = automatoid
             , temperature = Nothing
             , humidity = Nothing
             , fields = Dict.empty
-            , pendingMsgs = List.drop 1 pendingMsgs
+            , pendingMsgs = pendingMsgs
             , editedField = Nothing
+            , requestIdCount = requestIdCount + List.length pendingMsgs
             }
     in
     ( model
@@ -114,68 +140,103 @@ readField rfr =
     }
 
 
-onAutomatoMsg : AutomatoMsg -> Maybe String -> Model -> ( Model, Command )
-onAutomatoMsg am mbwhat model =
+onSerialError : SerialError.Error -> MsgWhat -> Model -> ( Model, Command )
+onSerialError se mw model =
     let
+        -- _ =
+        --     Debug.log "onSerialError: " se
+        -- _ =
+        --     Debug.log "pending what: " (List.head model.pendingMsgs |> Maybe.map .what)
+        -- _ =
+        --     Debug.log "incoming what: " mw
+        pms =
+            List.drop 1 model.pendingMsgs
+    in
+    ( { model | pendingMsgs = pms }
+    , case List.head pms of
+        Just pm ->
+            SendAutomatoMsg pm.automatoMsg pm.what
+
+        Nothing ->
+            None
+    )
+
+
+onAutomatoMsg : AutomatoMsg -> MsgWhat -> Model -> ( Model, Command )
+onAutomatoMsg am msgwhat model =
+    -- let
+    --     _ =
+    --         Debug.log "onAutomatoMsg: " am
+    --     _ =
+    --         Debug.log "pending what: " (List.head model.pendingMsgs |> Maybe.map .what)
+    --     _ =
+    --         Debug.log "incoming what: " msgwhat
+    -- in
+    let
+        nm0 =
+            { model | pendingMsgs = List.drop 1 model.pendingMsgs }
+
         nm =
             case am.message of
                 Payload.PeReadfieldreply rfr ->
-                    { model
-                        | fields = Dict.insert rfr.index { rfr = rfr, value = Nothing } model.fields
+                    { nm0
+                        | fields = Dict.insert rfr.index { rfr = rfr, value = Nothing } nm0.fields
                         , pendingMsgs =
-                            model.pendingMsgs
-                                ++ [ { automatoMsg = { id = model.id, message = Payload.PeReadmem <| readField rfr }
+                            nm0.pendingMsgs
+                                ++ [ { automatoMsg =
+                                        { id = nm0.id
+                                        , message = Payload.PeReadmem <| readField rfr
+                                        }
                                      , what =
-                                        JE.encode 0 (JE.int rfr.index)
-                                            |> Just
+                                        { id = nm0.requestIdCount, field = Just rfr.index }
                                      }
                                    ]
+                        , requestIdCount = nm0.requestIdCount + 1
                     }
 
                 Payload.PeReadmemreply rmr ->
-                    mbwhat
-                        |> Maybe.andThen
-                            (\what ->
-                                JD.decodeString JD.int what
-                                    |> Result.toMaybe
-                            )
+                    msgwhat.field
                         |> Maybe.andThen
                             (\i ->
-                                Dict.get i model.fields
+                                Dict.get i nm0.fields
                             )
                         |> Maybe.andThen
                             (\field ->
                                 Data.decodeValue field.rfr.format rmr
                                     |> Maybe.map
                                         (\val ->
-                                            { model
+                                            { nm0
                                                 | fields =
                                                     Dict.insert field.rfr.index
                                                         { rfr = field.rfr
                                                         , value = Just val
                                                         }
-                                                        model.fields
+                                                        nm0.fields
                                             }
                                         )
                             )
-                        |> Maybe.withDefault model
+                        |> Maybe.withDefault nm0
 
                 Payload.PeReadtemperaturereply f ->
-                    { model
+                    { nm0
                         | temperature = Just f
                     }
 
                 Payload.PeReadhumidityreply f ->
-                    { model
+                    { nm0
                         | humidity = Just f
                     }
 
                 _ ->
-                    model
+                    nm0
     in
-    ( { nm | pendingMsgs = List.drop 1 nm.pendingMsgs }
+    ( nm
     , case List.head nm.pendingMsgs of
         Just pm ->
+            -- let
+            --     _ =
+            --         Debug.log "sending" pm
+            -- in
             SendAutomatoMsg pm.automatoMsg pm.what
 
         Nothing ->
@@ -280,8 +341,9 @@ view size zone model =
                                             Just ( idx, str ) ->
                                                 let
                                                     valid =
-                                                        editUpdates model
-                                                            |> Util.isJust
+                                                        editUpdates model /= model
+
+                                                    -- |> Util.isJust
                                                 in
                                                 E.column
                                                     [ EBk.color TC.gray
@@ -358,39 +420,54 @@ view size zone model =
         ]
 
 
-editUpdates : Model -> Maybe ( Command, PendingMsg )
+editUpdates :
+    Model
+    -> Model -- Maybe ( Model, Command, PendingMsg )
 editUpdates model =
     model.editedField
         |> Maybe.andThen
             (\( efi, efs ) ->
                 Dict.get efi model.fields
-                    |> Maybe.map
+                    |> Maybe.andThen
                         (\fld ->
                             Data.strToFieldValue fld.rfr efs
                                 |> Maybe.map
                                     (\fv ->
-                                        ( SendAutomatoMsg
-                                            { id = model.id
-                                            , message =
-                                                Payload.PeWritemem
-                                                    { address = fld.rfr.offset
-                                                    , data = Data.encodeFieldValue fv
-                                                    }
-                                            }
-                                            Nothing
-                                        , { automatoMsg =
-                                                { id = model.id
-                                                , message = Payload.PeReadmem <| readField fld.rfr
-                                                }
-                                          , what =
-                                                JE.encode 0 (JE.int fld.rfr.index)
-                                                    |> Just
-                                          }
-                                        )
+                                        let
+                                            newmsgs =
+                                                [ { automatoMsg =
+                                                        { id = model.id
+                                                        , message =
+                                                            Payload.PeWritemem
+                                                                { address = fld.rfr.offset
+                                                                , data = Data.encodeFieldValue fv
+                                                                }
+                                                        }
+                                                  , what =
+                                                        { id = model.requestIdCount
+                                                        , field = Nothing
+                                                        }
+                                                  }
+                                                , { automatoMsg =
+                                                        { id = model.id
+                                                        , message = Payload.PeReadmem <| readField fld.rfr
+                                                        }
+                                                  , what =
+                                                        { id = model.requestIdCount + 1
+                                                        , field = Just fld.rfr.index
+                                                        }
+                                                  }
+                                                ]
+                                        in
+                                        { model
+                                            | requestIdCount = model.requestIdCount + List.length newmsgs
+                                            , editedField = Nothing
+                                            , pendingMsgs = model.pendingMsgs ++ newmsgs
+                                        }
                                     )
                         )
             )
-        |> Maybe.withDefault Nothing
+        |> Maybe.withDefault model
 
 
 update : Msg -> Model -> Time.Zone -> ( Model, Command )
@@ -421,27 +498,45 @@ update msg model zone =
             ( { model | editedField = model.editedField |> Maybe.map (\( i, _ ) -> ( i, s )) }, None )
 
         EditUpdate ->
-            case editUpdates model of
-                Just ( send, pend ) ->
-                    ( { model | editedField = Nothing, pendingMsgs = model.pendingMsgs ++ [ pend ] }
-                    , send
-                    )
+            let
+                nm =
+                    editUpdates model
+            in
+            ( nm
+            , case List.head nm.pendingMsgs of
+                Just pm ->
+                    -- let
+                    --     _ =
+                    --         Debug.log "editupdate sending" pm
+                    -- in
+                    SendAutomatoMsg pm.automatoMsg pm.what
 
                 Nothing ->
-                    ( model, None )
+                    None
+            )
 
+        -- case editUpdates model of
+        --     Just ( nm, send, pend ) ->
+        --         ( { nm | editedField = Nothing, pendingMsgs = model.pendingMsgs ++ [ pend ] }
+        --         , send
+        --         )
+        --     Nothing ->
+        --         ( model, None )
         EditCancel ->
             ( { model | editedField = Nothing }, None )
 
         EditRefresh ->
-            editUpdates model
-                |> Maybe.map
-                    (\( _, pend ) ->
-                        ( { model | editedField = Nothing }
-                        , SendAutomatoMsg pend.automatoMsg pend.what
-                        )
-                    )
-                |> Maybe.withDefault ( model, None )
+            -- TODO: fix
+            -- editUpdates model
+            --     |> Maybe.map
+            --         (\( nm, _, pend ) ->
+            --             ( { nm | editedField = Nothing }
+            --             , SendAutomatoMsg pend.automatoMsg pend.what
+            --             )
+            --         )
+            --     |> Maybe.withDefault ( model, None )
+            -- Debug.todo "" ( model, None )
+            ( model, None )
 
         DonePress ->
             ( model, Done )

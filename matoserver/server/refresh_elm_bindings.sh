@@ -1,0 +1,1 @@
+./target/debug/matoserver --writeelmbindings ../elm/src/

@@ -14,3 +14,4 @@ testmsgs/out/
 testmsgs/rust-out/
 testmsgs/rustmsgs-out/
 testmsgs/target/
+.direnv/

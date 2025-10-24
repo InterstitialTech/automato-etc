@@ -347,24 +347,3 @@ payloadEnumDecoder =
         , Json.Decode.map PeReadfieldreply (Json.Decode.field "PeReadfieldreply" (readFieldReplyDecoder))
         ]
 
-type alias AutomatoMsg =
-    { id : Int
-    , message : PayloadEnum
-    }
-
-
-automatoMsgEncoder : AutomatoMsg -> Json.Encode.Value
-automatoMsgEncoder struct =
-    Json.Encode.object
-        [ ( "id", (Json.Encode.int) struct.id )
-        , ( "message", (payloadEnumEncoder) struct.message )
-        ]
-
-
-automatoMsgDecoder : Json.Decode.Decoder AutomatoMsg
-automatoMsgDecoder =
-    Json.Decode.succeed AutomatoMsg
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "id" (Json.Decode.int)))
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "message" (payloadEnumDecoder)))
-
-

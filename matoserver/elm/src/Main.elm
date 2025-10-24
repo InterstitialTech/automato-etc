@@ -34,6 +34,7 @@ import LocalStorage as LS
 import Payload
 import PublicInterface as PI
 import Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
+import SerialError
 import ShowMessage
 import TDict exposing (TDict)
 import TangoColors as TC
@@ -50,6 +51,7 @@ import WindowKeys
 type Msg
     = ShowMessageMsg ShowMessage.Msg
     | PublicReplyData (Maybe String) (Result Http.Error PI.ServerResponse)
+    | AutomatoMsgReplyData AutomatoView.MsgWhat (Result Http.Error PI.ServerResponse)
     | LoadUrl String
     | InternalUrl Url
     | SelectedText JD.Value
@@ -69,10 +71,6 @@ type State
     | DisplayMessage DisplayMessage.GDModel State
     | AutomatoListing AutomatoListing.Model
     | AutomatoView AutomatoView.Model
-
-
-
--- | AutomatoView AutomatoView.Model (Maybe Data.LoginData)
 
 
 type alias Flags =
@@ -98,6 +96,7 @@ type alias Model =
     , timezone : Time.Zone
     , savedRoute : SavedRoute
     , fontsize : Int
+    , requestIdCount : Int
     }
 
 
@@ -133,7 +132,6 @@ routeState model route =
                 ( model.state, Cmd.none )
 
             else
-                -- home page if any, or login page if not logged in.
                 let
                     ( m, c ) =
                         initialPage model
@@ -176,6 +174,20 @@ showMessage msg =
 
         PublicReplyData what urd ->
             "PublicReplyData: "
+                ++ (Result.map PI.showServerResponse urd
+                        |> Result.mapError Util.httpErrorString
+                        |> (\r ->
+                                case r of
+                                    Ok m ->
+                                        "message: " ++ m
+
+                                    Err e ->
+                                        "error: " ++ e
+                           )
+                   )
+
+        AutomatoMsgReplyData what urd ->
+            "AutomatoMsgReplyData: "
                 ++ (Result.map PI.showServerResponse urd
                         |> Result.mapError Util.httpErrorString
                         |> (\r ->
@@ -485,18 +497,41 @@ actualupdate msg model =
 
                 Ok uiresponse ->
                     case uiresponse of
-                        -- TI.ProjectList x ->
-                        --     case stateLogin state of
-                        --         Just login ->
-                        --             ( { model | state = ProjectListing (ProjectListing.init x) login }, Cmd.none )
-                        --         Nothing ->
-                        --             ( model, Cmd.none )
-                        -- TI.ProjectEdit x ->
-                        --     case stateLogin state of
-                        --         Just login ->
-                        --             ( { model | state = ProjectEdit (ProjectEdit.initEdit x.project x.members) login }, Cmd.none )
-                        --         Nothing ->
-                        --             ( model, Cmd.none )
+                        PI.ServerError e ->
+                            ( displayMessageDialog model <| e, Cmd.none )
+
+                        PI.AutomatoList x ->
+                            ( { model
+                                | state =
+                                    AutomatoListing (AutomatoListing.init x)
+                              }
+                            , Cmd.none
+                            )
+
+                        PI.AutomatoMsg am ->
+                            case ( model.state, am.message ) of
+                                -- ( AutomatoView av, _ ) ->
+                                --     handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
+                                ( _, Payload.PeReadinforeply info ) ->
+                                    handleAutomatoView model
+                                        (AutomatoView.init am.id
+                                            info
+                                            model.requestIdCount
+                                        )
+
+                                _ ->
+                                    ( model, Cmd.none )
+
+                        PI.SerialError se ->
+                            ( displayMessageDialog model (JE.encode 2 (SerialError.errorEncoder se)), Cmd.none )
+
+        ( AutomatoMsgReplyData what urd, state ) ->
+            case urd of
+                Err e ->
+                    ( displayMessageDialog model <| Util.httpErrorString e, Cmd.none )
+
+                Ok uiresponse ->
+                    case uiresponse of
                         PI.ServerError e ->
                             ( displayMessageDialog model <| e, Cmd.none )
 
@@ -514,7 +549,22 @@ actualupdate msg model =
                                     handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
 
                                 ( _, Payload.PeReadinforeply info ) ->
-                                    handleAutomatoView model (AutomatoView.init am.id info)
+                                    handleAutomatoView model
+                                        (AutomatoView.init am.id
+                                            info
+                                            model.requestIdCount
+                                        )
+
+                                _ ->
+                                    ( model, Cmd.none )
+
+                        PI.SerialError se ->
+                            case model.state of
+                                AutomatoView av ->
+                                    handleAutomatoView model (AutomatoView.onSerialError se what av)
+
+                                DisplayMessage _ (AutomatoView av) ->
+                                    handleAutomatoView model (AutomatoView.onSerialError se what av)
 
                                 _ ->
                                     ( model, Cmd.none )
@@ -576,18 +626,6 @@ actualupdate msg model =
         ( AutomatoViewMsg ms, AutomatoView st ) ->
             handleAutomatoView model (AutomatoView.update ms st model.timezone)
 
-        -- ( WkMsg rkey, ProjectEdit ptm login ) ->
-        --     case rkey of
-        --         Ok key ->
-        --             handleProjectEdit model (ProjectEdit.onWkKeyPress key ptm login) login
-        --         Err _ ->
-        --             ( model, Cmd.none )
-        -- ( WkMsg rkey, ProjectTime ptm login ) ->
-        --     case rkey of
-        --         Ok key ->
-        --             handleProjectTime model (ProjectTime.onWkKeyPress key ptm login model.timezone) login
-        --         Err _ ->
-        --             ( model, Cmd.none )
         ( x, y ) ->
             ( unexpectedMsg model x
             , Cmd.none
@@ -606,8 +644,11 @@ handleAutomatoView model ( nm, cmd ) =
             ( displayMessageDialog { model | state = AutomatoView nm } e, Cmd.none )
 
         AutomatoView.SendAutomatoMsg am what ->
-            ( { model | state = AutomatoView nm }
-            , sendPIMsgExp model.location (PI.SendAutomatoMsg am) (PublicReplyData what)
+            ( { model
+                | state = AutomatoView nm
+                , requestIdCount = 0
+              }
+            , sendPIMsgExp model.location (PI.SendAutomatoMsg am) (AutomatoMsgReplyData what)
             )
 
         AutomatoView.None ->
@@ -661,6 +702,7 @@ init flags url key zone fontsize =
             , timezone = zone
             , savedRoute = { route = Top, save = False }
             , fontsize = fontsize
+            , requestIdCount = 0
             }
 
         setkeys =
@@ -709,12 +751,6 @@ init flags url key zone fontsize =
                 ]
              )
             )
-
-
-
--- initLogin : String -> Seed -> State
--- initLogin appname seed =
---     Login <| Login.initialModel Nothing appname seed
 
 
 main : Platform.Program Flags PiModel Msg

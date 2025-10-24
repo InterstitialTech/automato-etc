@@ -1,19 +1,22 @@
 use clap::Arg;
+use std::time::Duration;
 mod config;
 mod data;
 mod interfaces;
 mod messages;
 mod util;
+use crate::data::ServerData;
 use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use automato::automatomsg as am;
 use config::Config;
-use data::{AutomatoMsg, ServerData};
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
 use serde_json;
-use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
-use simple_error::bail;
+use std::path::Path;
+mod serial_error;
+use serialport;
+use simple_error::{bail, simple_error};
 use std::env;
 use std::error::Error;
 use std::path::PathBuf;
@@ -157,39 +160,96 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .value_name("NUMBER")
+                .help("timeout (ms)")
+                .default_value("420")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("writeelmbindings")
                 .long("writeelmbindings")
-                .value_name("FILE")
-                .help("Write elmbindings file")
+                .value_name("DIR")
+                .help("Write elmbindings directory")
                 .takes_value(true),
         )
         .get_matches();
 
     match matches.value_of("writeelmbindings") {
-        Some(exportfile) => {
-            let mut target = vec![];
-            // elm_rs provides a macro for conveniently creating an Elm module with everything needed
-            elm_rs::export!(
-                "Payload",
-                &mut target,
-                am::RemoteInfo,
-                am::Pinval,
-                am::AnalogPinval,
-                am::Pinmode,
-                am::Readmem,
-                am::ReadmemReply,
-                am::Writemem,
-                am::ReadField,
-                am::ReadFieldReply,
-                am::PayloadEnum,
-                AutomatoMsg
-            )
-            .unwrap();
-            let output = String::from_utf8(target).unwrap();
+        Some(exportdir) => {
+            let ed = Path::new(exportdir);
+            {
+                let mut target = vec![];
+                // elm_rs provides a macro for conveniently creating an Elm module with everything needed
+                elm_rs::export!(
+                    "Payload",
+                    &mut target,
+                    am::RemoteInfo,
+                    am::Pinval,
+                    am::AnalogPinval,
+                    am::Pinmode,
+                    am::Readmem,
+                    am::ReadmemReply,
+                    am::Writemem,
+                    am::ReadField,
+                    am::ReadFieldReply,
+                    am::PayloadEnum
+                )
+                .unwrap();
+                let output = String::from_utf8(target).unwrap();
+                let outf = ed
+                    .join("Payload.elm")
+                    .to_str()
+                    .ok_or(simple_error!("bad path"))?
+                    .to_string();
+                util::write_string(outf.as_str(), output.as_str())?;
 
-            util::write_string(exportfile, output.as_str())?;
+                println!("wrote file: {}", outf);
+            }
 
-            println!("wrote file: {}", exportfile);
+            {
+                let mut target = vec![];
+                elm_rs::export!(
+                    "SerialError",
+                    &mut target,
+                    serial_error::Error,
+                    serial_error::ErrorKind,
+                    serial_error::IOErrorKind
+                )
+                .unwrap();
+
+                let output = String::from_utf8(target).unwrap();
+                let outf = ed
+                    .join("SerialError.elm")
+                    .to_str()
+                    .ok_or(simple_error!("bad path"))?
+                    .to_string();
+                util::write_string(outf.as_str(), output.as_str())?;
+                println!("wrote file: {}", outf);
+            }
+
+            {
+                let mut target = vec![];
+                elm_rs::export!(
+                    "Messages",
+                    &mut target,
+                    messages::AutomatoMsg,
+                    messages::WhatMsg,
+                    messages::WhatError
+                )
+                .unwrap();
+
+                let output = String::from_utf8(target).unwrap();
+                let outf = ed
+                    .join("Messages.elm")
+                    .to_str()
+                    .ok_or(simple_error!("bad path"))?
+                    .to_string();
+                util::write_string(outf.as_str(), output.as_str())?;
+                println!("wrote file: {}", outf);
+            }
 
             return Ok(());
         }
@@ -210,10 +270,14 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
 
             info!("server init!");
 
-            let (port, baud) = match (matches.value_of("port"), matches.value_of("baud")) {
-                (Some(port), Some(baudstr)) => {
-                    let baud = BaudRate::from_speed(baudstr.parse::<usize>()?);
-                    (port, baud)
+            let (port, baud, timeout) = match (
+                matches.value_of("port"),
+                matches.value_of("baud"),
+                matches.value_of("timeout"),
+            ) {
+                (Some(port), Some(baudstr), Some(timeout)) => {
+                    let baud = baudstr.parse::<u32>()?;
+                    (port, baud, timeout.parse::<u64>()?)
                 }
                 _ => bail!("arg failure"),
             };
@@ -230,16 +294,13 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
 
             info!("config: {:?}", config);
 
-            let mut port = serial::open(port)?;
-
-            let ps = PortSettings {
-                baud_rate: baud,
-                char_size: CharSize::Bits8,
-                parity: Parity::ParityNone,
-                stop_bits: StopBits::Stop1,
-                flow_control: FlowControl::FlowNone,
-            };
-            port.configure(&ps)?;
+            let port = serialport::new(port, baud)
+                .data_bits(serialport::DataBits::Eight)
+                .flow_control(serialport::FlowControl::None)
+                .parity(serialport::Parity::None)
+                .stop_bits(serialport::StopBits::One)
+                .timeout(Duration::from_millis(timeout))
+                .open()?;
 
             let mp = Arc::new(Mutex::new(port));
 

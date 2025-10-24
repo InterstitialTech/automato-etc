@@ -45,7 +45,7 @@ float lowertargethumidity_eep;
 bool uppertargethumidity_is_in_eep;
 float uppertargethumidity_eep;
 
-// storeage for latest network message.
+// storage for latest network message.
 Msgbuf receivedmsg;
 uint8_t received_peer_addr[ESP_NOW_ETH_ALEN];
 volatile bool msgready = false;
@@ -154,7 +154,6 @@ void setup() {
   lastCheck = 0;
 
   pinMode(output_pin, OUTPUT);
-}
 
 void loop() {
   if (msgready) {

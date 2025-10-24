@@ -7,7 +7,7 @@ use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 
-use serial::{BaudRate, CharSize, FlowControl, Parity, PortSettings, SerialPort, StopBits};
+use serialport::SerialPort;
 
 fn main() {
     match err_main() {
@@ -243,16 +243,13 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let mut port = serial::open(port)?;
-
-    let ps = PortSettings {
-        baud_rate: baud,
-        char_size: CharSize::Bits8,
-        parity: Parity::ParityNone,
-        stop_bits: StopBits::Stop1,
-        flow_control: FlowControl::FlowNone,
-    };
-    port.configure(&ps)?;
+    let mut port = serialport::new(port, baud)
+        .data_bits(serialport::DataBits::Eight)
+        .flow_control(serialport::FlowControl::None)
+        .parity(serialport::Parity::None)
+        .stop_bits(serialport::StopBits::One)
+        .timeout(Duration::from_millis(timeout))
+        .open()?;
 
     let debug_reply = false;
     unsafe {
@@ -263,7 +260,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         };
 
         let mut fromid: u8 = 0;
-        port.set_timeout(Duration::from_millis(timeout));
 
         if debug_reply {
             let mut monobuf = [0; 1];
@@ -271,9 +267,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             while port.read_exact(&mut monobuf).is_ok() {
                 // just print the chars we read.  good for debug from Serial.print() on the automato.
                 // print!("{}", monobuf[0] as char);
-
                 // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
-
                 // print the index, number, and char
                 println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
                 count = count + 1;
@@ -286,8 +280,8 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             //     println!("msg: {}", buf);
             // }
         } else {
-            match am::read_message(&mut port, &mut retmsg, &mut fromid) {
-                Ok(true) => {
+            match am::read_message(&mut *port, &mut retmsg, &mut fromid) {
+                Ok(()) => {
                     println!("reply from: {}", fromid);
                     // for i in 0..retmsg.buf.len() {
                     //     let c = retmsg.buf[i];
@@ -298,9 +292,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                     } else {
                         am::print_payload(&retmsg.payload);
                     }
-                }
-                Ok(false) => {
-                    println!("here");
                 }
                 Err(e) => {
                     println!("error: {:?}", e);

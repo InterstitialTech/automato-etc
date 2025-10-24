@@ -6,21 +6,24 @@ module PublicInterface exposing
     , showServerResponse
     )
 
-import Data exposing (AutomatoId)
+import Data
 import Json.Decode as JD
 import Json.Encode as JE
+import Messages
 import Payload
+import SerialError as SE
 
 
 type SendMsg
     = GetAutomatoList
-    | SendAutomatoMsg Payload.AutomatoMsg
+    | SendAutomatoMsg Messages.AutomatoMsg
 
 
 type ServerResponse
     = ServerError String
     | AutomatoList (List Data.ListAutomato)
-    | AutomatoMsg Payload.AutomatoMsg
+    | AutomatoMsg Messages.AutomatoMsg
+    | SerialError SE.Error
 
 
 showServerResponse : ServerResponse -> String
@@ -35,6 +38,9 @@ showServerResponse sr =
         AutomatoMsg _ ->
             "AutomatoMsg"
 
+        SerialError _ ->
+            "SerialError"
+
 
 encodeSendMsg : SendMsg -> JE.Value
 encodeSendMsg sm =
@@ -47,7 +53,7 @@ encodeSendMsg sm =
         SendAutomatoMsg msg ->
             JE.object
                 [ ( "what", JE.string "AutomatoMsg" )
-                , ( "data", Payload.automatoMsgEncoder msg )
+                , ( "data", Messages.automatoMsgEncoder msg )
                 ]
 
 
@@ -67,8 +73,12 @@ serverResponseDecoder =
                             |> JD.map AutomatoList
 
                     "automatomsg" ->
-                        JD.at [ "content" ] Payload.automatoMsgDecoder
+                        JD.at [ "content" ] Messages.automatoMsgDecoder
                             |> JD.map AutomatoMsg
+
+                    "serial error" ->
+                        JD.at [ "content" ] SE.errorDecoder
+                            |> JD.map SerialError
 
                     wat ->
                         JD.succeed

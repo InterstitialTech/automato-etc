@@ -1,13 +1,10 @@
-use crate::config::Config;
-// use crate::data::{};
+use crate::data::ServerData;
+use crate::messages::AutomatoMsg;
 use crate::messages::{PublicMessage, ServerResponse};
-// use crate::sqldata;
-use crate::data::{AutomatoMsg, ListAutomato, ServerData};
+use crate::serial_error;
 use automato::automatomsg as am;
 use log::info;
-use serial::SerialPort;
 use std::error::Error;
-use std::thread::sleep;
 use std::time::Duration;
 
 // public json msgs don't require login.
@@ -28,20 +25,21 @@ pub fn public_interface(
                 buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
             };
 
-            println!("automatomsg: {:?}", am);
+            println!("sending automatomsg: {:?}", am);
 
             let mut retmsg = mb.clone();
 
             unsafe {
                 mb.payload = am::Payload::from(am.message);
                 let mut port = data.port.lock()?;
-                am::write_message(&mut port, &mb, am.id)?;
+                am::write_message(&mut **port, &mb, am.id)?;
 
                 let mut fromid: u8 = 0;
-                port.set_timeout(Duration::from_millis(420))?;
+                // set to more than the hardcoded RHMesh timeout, which is 4000ms
+                port.set_timeout(Duration::from_millis(4420))?;
 
-                match am::read_message(&mut port, &mut retmsg, &mut fromid) {
-                    Ok(true) => {
+                match am::read_message(&mut **port, &mut retmsg, &mut fromid) {
+                    Ok(()) => {
                         println!("reply from: {}", fromid);
                         // for i in 0..retmsg.buf.len() {
                         //     let c = retmsg.buf[i];
@@ -58,18 +56,13 @@ pub fn public_interface(
                             content: serde_json::to_value(rm)?,
                         })
                     }
-                    Ok(false) => {
-                        println!("here");
-                        Ok(ServerResponse {
-                            what: "here".to_string(),
-                            content: serde_json::Value::Null,
-                        })
-                    }
                     Err(e) => {
-                        println!("error: {:?}", e);
+                        println!("read_message err: {:?}", e);
+                        let se = serial_error::Error::from(e);
                         Ok(ServerResponse {
-                            what: "err".to_string(),
-                            content: serde_json::Value::Null,
+                            what: "serial error".to_string(),
+                            content: serde_json::to_value(se)?,
+                            // content: serde_json::Value::Null,
                         })
                     }
                 }
