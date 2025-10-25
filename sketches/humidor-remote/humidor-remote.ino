@@ -154,6 +154,7 @@ void setup() {
   lastCheck = 0;
 
   pinMode(output_pin, OUTPUT);
+}
 
 void loop() {
   if (msgready) {

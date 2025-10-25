@@ -4,10 +4,7 @@ use clap::{Arg, Command};
 use simple_error::bail;
 use std::error::Error;
 use std::io::Read;
-use std::thread::sleep;
 use std::time::Duration;
-
-use serialport::SerialPort;
 
 fn main() {
     match err_main() {
@@ -121,7 +118,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         )
         .get_matches();
 
-    let (mb_automatoLora_addr, mb_automatoEspnow_addr) = (
+    let (mb_automato_lora_addr, mb_automato_espnow_addr) = (
         matches
             .value_of("lora address")
             .and_then(|x| match x.parse::<u8>() {
@@ -143,7 +140,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         }),
     );
 
-    match (mb_automatoLora_addr, mb_automatoEspnow_addr) {
+    match (mb_automato_lora_addr, mb_automato_espnow_addr) {
         (Some(_), Some(_)) => bail!("only lora OR esp-now address allowed, not both."),
         (None, None) => bail!("one of lora OR esp-now address is required."),
         _ => (),
@@ -155,7 +152,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         matches.value_of("timeout"),
     ) {
         (Some(port), Some(baudstr), Some(timeout)) => {
-            let baud = BaudRate::from_speed(baudstr.parse::<usize>()?);
+            let baud = baudstr.parse::<u32>()?;
             (port, baud, timeout.parse::<u64>()?)
         }
         _ => bail!("arg failure"),
@@ -253,9 +250,9 @@ fn err_main() -> Result<(), Box<dyn Error>> {
 
     let debug_reply = false;
     unsafe {
-        match (mb_automatoLora_addr, mb_automatoEspnow_addr) {
-            (Some(loraaddr), _) => am::write_lora_message(&mut port, &mb, loraaddr)?,
-            (_, Some(espnowaddr)) => am::write_espnow_message(&mut port, &mb, espnowaddr)?,
+        match (mb_automato_lora_addr, mb_automato_espnow_addr) {
+            (Some(loraaddr), _) => am::write_lora_message(&mut *port, &mb, loraaddr)?,
+            (_, Some(espnowaddr)) => am::write_espnow_message(&mut *port, &mb, espnowaddr)?,
             _ => bail!("automato network address error"),
         };
 

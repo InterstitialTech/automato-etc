@@ -693,11 +693,12 @@ pub unsafe fn write_lora_message(
 
     Ok(())
 }
+
 pub unsafe fn write_espnow_message(
-    port: &mut serial::SystemPort,
+    port: &mut dyn serialport::SerialPort,
     msg: &Msgbuf,
     toid: [u8; 6],
-) -> Result<(), serial::Error> {
+) -> Result<(), serialport::Error> {
     let sz = payload_size(&msg.payload);
 
     port.write(&['e' as u8])?;
