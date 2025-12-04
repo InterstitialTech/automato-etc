@@ -52,19 +52,19 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         .arg(
             Arg::new("lora address")
                 .short('l')
-                .long("address")
+                .long("lora address")
                 .value_name("0-255")
                 .help("lora network address of an automato")
-                .required(true)
+                .required(false)
                 .takes_value(true),
         )
         .arg(
             Arg::new("esp-now address")
                 .short('e')
-                .long("address")
+                .long("esp-now address")
                 .value_name("hex mac address, like: e4b3238d663c")
                 .help("esp-now network address of an automato")
-                .required(true)
+                .required(false)
                 .takes_value(true),
         )
         .arg(
