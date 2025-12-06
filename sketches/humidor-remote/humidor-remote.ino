@@ -169,7 +169,8 @@ void loop() {
     msgready = false;
   }
 
-  automato.doSerial();
+  // can't use this with all the Serial.println
+  // automato.doSerial();
 
   // if (!(ar = automato.doRemoteControl())) {
   //   Serial.println("-------- failure ---------");

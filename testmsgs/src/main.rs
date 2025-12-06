@@ -1,4 +1,4 @@
-use automato::automatomsg as am;
+use automato::automatomsg::{self as am, FieldFormat};
 use automato::automatomsg::{Msgbuf, Payload, PayloadData, PayloadType, ResultCode};
 use clap::{Arg, Command};
 use serde_json;
@@ -114,63 +114,70 @@ unsafe fn write_message_files(
     };
 
     am::setup_ack(&mut payload);
-    write_message(dir, "ack.js", payload)?;
+    write_message(dir, "ack", payload)?;
 
     am::setup_fail(&mut payload, ResultCode::RcInvalidRhRouterError);
-    write_message(dir, "fail.js", payload)?;
+    write_message(dir, "fail", payload)?;
 
     am::setup_pinmode(&mut payload, 26, 2);
-    write_message(dir, "pinmode.js", payload)?;
+    write_message(dir, "pinmode", payload)?;
 
     am::setup_readpin(&mut payload, 22);
-    write_message(dir, "readpin.js", payload)?;
+    write_message(dir, "readpin", payload)?;
 
     am::setup_readpinreply(&mut payload, 26, 1);
-    write_message(dir, "readpinreply.js", payload)?;
+    write_message(dir, "readpinreply", payload)?;
 
     am::setup_writepin(&mut payload, 15, 1);
-    write_message(dir, "writepin.js", payload)?;
+    write_message(dir, "writepin", payload)?;
 
     am::setup_readanalog(&mut payload, 27);
-    write_message(dir, "readanalog.js", payload)?;
+    write_message(dir, "readanalog", payload)?;
 
     am::setup_readanalogreply(&mut payload, 6, 500);
-    write_message(dir, "readanalogreply.js", payload)?;
+    write_message(dir, "readanalogreply", payload)?;
 
     am::setup_readmem(&mut payload, 1500, 75);
-    write_message(dir, "readmem.js", payload)?;
+    write_message(dir, "readmem", payload)?;
 
     let test = [1, 2, 3, 4, 5];
     am::setup_readmemreply(&mut payload, &test);
-    write_message(dir, "readmemreply.js", payload)?;
+    write_message(dir, "readmemreply", payload)?;
 
     let test = [5, 4, 3, 2, 1];
     am::setup_writemem(&mut payload, 5678, &test);
-    write_message(dir, "writemem.js", payload)?;
+    write_message(dir, "writemem", payload)?;
 
     am::setup_readinfo(&mut payload);
-    write_message(dir, "readinfo.js", payload)?;
+    write_message(dir, "readinfo", payload)?;
 
     am::setup_readinforeply(&mut payload, 1.1, 5678, 5000, 5);
-    write_message(dir, "readinforeply.js", payload)?;
+    write_message(dir, "readinforeply", payload)?;
 
     am::setup_readhumidity(&mut payload);
-    write_message(dir, "readhumidity.js", payload)?;
+    write_message(dir, "readhumidity", payload)?;
 
     am::setup_readhumidityreply(&mut payload, 45.7);
-    write_message(dir, "readhumidityreply.js", payload)?;
+    write_message(dir, "readhumidityreply", payload)?;
 
     am::setup_readtemperature(&mut payload);
-    write_message(dir, "readtemperature.js", payload)?;
+    write_message(dir, "readtemperature", payload)?;
 
     am::setup_readtemperaturereply(&mut payload, 98.6);
-    write_message(dir, "readtemperaturereply.js", payload)?;
+    write_message(dir, "readtemperaturereply", payload)?;
 
     am::setup_readfield(&mut payload, 1);
-    write_message(dir, "readfield.js", payload)?;
+    write_message(dir, "readfield", payload)?;
 
-    am::setup_readfieldreply(&mut payload, 7, 77, 20, 4, "wat".as_bytes());
-    write_message(dir, "readfieldreply.js", payload)?;
+    am::setup_readfieldreply(
+        &mut payload,
+        7,
+        77,
+        20,
+        am::FieldFormat::FfUint32,
+        "wat".as_bytes(),
+    );
+    write_message(dir, "readfieldreply", payload)?;
 
     Ok(())
 }
@@ -389,7 +396,7 @@ unsafe fn read_message_files(
         || mb.payload.data.readfieldreply.offset != 77
         || mb.payload.data.readfieldreply.length != 20
     // TODO: define format codes
-        || mb.payload.data.readfieldreply.format != 4
+        || mb.payload.data.readfieldreply.format != FieldFormat::FfUint32 as u8
     {
         println!("readfieldreply msg failed");
         return Ok(false);

@@ -387,6 +387,7 @@ pub union Msgbuf {
 pub enum ResultCode {
     RcOk,
     RcNoMessageReceived,
+    ReEspNowError,
     RcInvalidMessageType,
     RcInvalidPinNumber,
     RcInvalidMemAddress,
@@ -701,8 +702,21 @@ pub unsafe fn write_espnow_message(
 ) -> Result<(), serialport::Error> {
     let sz = payload_size(&msg.payload);
 
+    println!("espnow toid {:?}", toid);
+
     port.write(&['e' as u8])?;
-    port.write(&toid[0..6])?;
+    // println!("write res: {:?}", port.write(&toid[0..6])?);
+    port.write(&[toid[0]])?;
+    port.write(&[toid[1]])?;
+    port.write(&[toid[2]])?;
+    port.write(&[toid[3]])?;
+    port.write(&[toid[4]])?;
+    port.write(&[toid[5]])?;
+    // port.write(&toid[1])?;
+    // port.write(&toid[2])?;
+    // port.write(&toid[3])?;
+    // port.write(&toid[4])?;
+    // port.write(&toid[5])?;
     port.write(&[sz as u8])?;
     port.write(&msg.buf[0..sz + 1])?;
 
@@ -722,25 +736,27 @@ pub unsafe fn read_message(
     //     return Ok(false);
     // }
     loop {
-        println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf)?);
-        println!("readexact 1 {}", monobuf[0]);
+        port.read_exact(&mut monobuf)?;
+        // println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf)?);
+        println!("readexact 1 {} {}", monobuf[0], monobuf[0] as char);
         // port.read_exact(&mut monobuf)?;
         if monobuf[0] as char == 'm' {
             break;
         }
     }
 
-    // port.read_exact(&mut monobuf)?;
-    println!("readexact 2 rs {:?}", port.read_exact(&mut monobuf)?);
+    port.read_exact(&mut monobuf)?;
+    // println!("readexact 2 rs {:?}", port.read_exact(&mut monobuf)?);
     println!("readexact 2 {}", monobuf[0]);
     *fromid = monobuf[0];
 
-    // port.read_exact(&mut monobuf)?;
-    println!("readexact 3 rs {:?}", port.read_exact(&mut monobuf));
+    port.read_exact(&mut monobuf)?;
+    // println!("readexact 3 rs {:?}", port.read_exact(&mut monobuf));
     println!("readexact 3 {}", monobuf[0]);
     let sz = monobuf[0] as usize;
 
     if sz > 0 {
+        println!("got size {}", sz);
         port.read_exact(&mut msg.buf[0..sz])?;
     }
 

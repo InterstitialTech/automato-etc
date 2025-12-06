@@ -23,7 +23,7 @@
               rust-analyzer
               openssl.dev
               udev
-              pkgconfig
+              pkg-config
               elm2nix
               elmPackages.elm
               elmPackages.elm-analyse
@@ -35,7 +35,7 @@
               elmPackages.elm-xref
               elmPackages.elm-language-server
               elmPackages.elm-verify-examples
-              elmPackages.elmi-to-json
+              # elmPackages.elmi-to-json
               elmPackages.elm-optimize-level-2
             ];
           };
