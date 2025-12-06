@@ -256,6 +256,8 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             _ => bail!("automato network address error"),
         };
 
+        // println!("espnowaddr: {:?}", esp
+
         let mut fromid: u8 = 0;
 
         if debug_reply {
@@ -277,9 +279,9 @@ fn err_main() -> Result<(), Box<dyn Error>> {
             //     println!("msg: {}", buf);
             // }
         } else {
-            match am::read_message(&mut *port, &mut retmsg, &mut fromid) {
-                Ok(()) => {
-                    println!("reply from: {}", fromid);
+            match am::read_message(&mut *port, &mut retmsg) {
+                Ok(addr) => {
+                    println!("reply from: {:?}", addr);
                     // for i in 0..retmsg.buf.len() {
                     //     let c = retmsg.buf[i];
                     //     println!("{} - {}", c, c as char);

@@ -703,6 +703,8 @@ pub unsafe fn write_espnow_message(
     let sz = payload_size(&msg.payload);
 
     println!("espnow toid {:?}", toid);
+    println!("sz {}", sz);
+    println!("type {}", msg.buf[0]);
 
     port.write(&['e' as u8])?;
     // println!("write res: {:?}", port.write(&toid[0..6])?);
@@ -723,11 +725,22 @@ pub unsafe fn write_espnow_message(
     Ok(())
 }
 
+// pub enum IdType {
+//     Lora,
+//     EspNow,
+// };
+
+#[derive(Clone, Copy, Debug)]
+pub enum AutomatoId {
+    Lora(u8),
+    EspNow([u8; 6]),
+}
+
 pub unsafe fn read_message(
     port: &mut dyn serialport::SerialPort,
     msg: &mut Msgbuf,
-    fromid: &mut u8,
-) -> Result<(), serialport::Error> {
+    // fromid: &mut AutomatoId,
+) -> Result<AutomatoId, serialport::Error> {
     let mut monobuf = [0; 1];
 
     // println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf));
@@ -735,20 +748,36 @@ pub unsafe fn read_message(
     // if monobuf[0] as char != 'm' {
     //     return Ok(false);
     // }
-    loop {
+    //
+
+    let id = loop {
         port.read_exact(&mut monobuf)?;
         // println!("readexact 1 rs {:?}", port.read_exact(&mut monobuf)?);
         println!("readexact 1 {} {}", monobuf[0], monobuf[0] as char);
         // port.read_exact(&mut monobuf)?;
-        if monobuf[0] as char == 'm' {
-            break;
+        if monobuf[0] as char == 'l' {
+            port.read_exact(&mut monobuf)?;
+            // println!("readexact 2 rs {:?}", port.read_exact(&mut monobuf)?);
+            println!("readexact 2 {}", monobuf[0]);
+            // *fromid = monobuf[0];
+            break AutomatoId::Lora(monobuf[0]);
         }
-    }
+        if monobuf[0] as char == 'e' {
+            // let mut eid = EspNow([0; 6]);
+            let mut eid: [u8; 6] = [0; 6];
+            port.read_exact(&mut eid)?;
+            for c in eid {
+                println!("eid = {}, {:?}", c, c as char);
+            }
+            println!("espnowid: {:?}", eid);
+            break AutomatoId::EspNow(eid);
+        }
+    };
 
-    port.read_exact(&mut monobuf)?;
+    // port.read_exact(&mut monobuf)?;
     // println!("readexact 2 rs {:?}", port.read_exact(&mut monobuf)?);
-    println!("readexact 2 {}", monobuf[0]);
-    *fromid = monobuf[0];
+    // println!("readexact 2 {}", monobuf[0]);
+    // *fromid = monobuf[0];
 
     port.read_exact(&mut monobuf)?;
     // println!("readexact 3 rs {:?}", port.read_exact(&mut monobuf));
@@ -760,5 +789,5 @@ pub unsafe fn read_message(
         port.read_exact(&mut msg.buf[0..sz])?;
     }
 
-    Ok(())
+    Ok(id)
 }

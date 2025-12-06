@@ -20,7 +20,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
     let matches = clap::Command::new("testmsgs")
         .version("1.0")
         .author("Automato Enterprises")
-        .about("cli for testing automato messsages to/from files.")
+        .about("cli for testing automato messages to/from files.")
         .arg(
             Arg::new("dir")
                 .short('d')
