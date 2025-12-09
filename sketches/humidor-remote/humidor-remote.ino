@@ -51,14 +51,16 @@ uint8_t received_peer_addr[ESP_NOW_ETH_ALEN];
 volatile bool msgready = false;
 
 void callback(const esp_now_recv_info *info, const uint8_t *data, int len) {
+  Serial.println("callback");
+
   if (msgready) {
-    Serial.println("");
+    Serial.println("msgready");
   }
   memcpy(&received_peer_addr, info->src_addr, ESP_NOW_ETH_ALEN);
   memcpy(&receivedmsg.buf, data, max(len, MAX_MESSAGE_LEN));
   msgready = true;
-  // Serial.print("Bytes received: ");
-  // Serial.println(len);
+  Serial.print("Bytes received: ");
+  Serial.println(len);
   // Serial.print("-> Message received: ");
   // Serial.println((char*)buf);
 }
@@ -92,7 +94,7 @@ void saveLTHIfChanged() {
     lowertargethumidity_eep = serverdata.lowertargethumidity;
     prefs.end();
   } else {
-    Serial.println("NOT saving LTH!");
+    // Serial.println("NOT saving LTH!");
   }
 }
 
@@ -106,13 +108,13 @@ void saveUTHIfChanged() {
     uppertargethumidity_eep = serverdata.uppertargethumidity;
     prefs.end();
   } else {
-    Serial.println("NOT saving UTH!");
+    // Serial.println("NOT saving UTH!");
   }
 }
 
 void setup() {
   // pinMode(PIN_LORA_RST, INPUT); // Let the pin float.
-  pinMode(PIN_LED, OUTPUT);
+  // pinMode(PIN_LED, OUTPUT);
 
   // Disable SPI devices until needed.
   // pinMode(PIN_LCD_CS, OUTPUT);
@@ -127,14 +129,22 @@ void setup() {
   readFromFlash();
 
   // automato.init(915.0, 20);
-  automato.init(915.0, 5);
+  // automato.init(915.0, 5);
+  automato.init();
+  automato.initEspNow();
+
+  automato.setCallbackEspNow(callback);
+
 
   Serial.println("automato remote control server");
 
-  Serial.print("my mac address:");
-  Serial.println(Automato::macAddress());
+  // Serial.print("my mac address:");
+  // Serial.println(Automato::macAddress());
+  // Serial.println(Automato::macAddress());
 
+  // -----------------------------------
   // set serverdata vals.
+  // -----------------------------------
   strcpy(serverdata.name, "humidor-2");
 
   if (lowertargethumidity_is_in_eep)
@@ -150,15 +160,16 @@ void setup() {
   serverdata.loops = 0;
   serverdata.checkInterval = 5000;
 
+  // -----------------------------------
   // init to 0 millis from start.
   lastCheck = 0;
 
-  pinMode(output_pin, OUTPUT);
+  // pinMode(output_pin, OUTPUT);
 }
 
 void loop() {
   if (msgready) {
-
+    Serial.println("msgready");
     if (!(ar = automato.handleEspNowMessage(received_peer_addr, receivedmsg))) {
       Serial.println("-------- failure ---------");
       Serial.println("error from doRemoteControl():");
@@ -180,6 +191,7 @@ void loop() {
   //   Serial.println(ar.resultCode());
   // }
 
+  /*
   // if lower/upper targets changed, save to eeprom.
   saveLTHIfChanged();
   saveUTHIfChanged();
@@ -203,6 +215,7 @@ void loop() {
       digitalWrite(output_pin, LOW);
     }
   }
+  */
 
   serverdata.loops++;
 }

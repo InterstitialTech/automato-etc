@@ -4,7 +4,8 @@ use clap::{Arg, Command};
 use simple_error::bail;
 use std::error::Error;
 use std::io::Read;
-use std::time::Duration;
+use std::thread::sleep;
+use std::time::{self, Duration};
 
 fn main() {
     match err_main() {
@@ -258,18 +259,21 @@ fn err_main() -> Result<(), Box<dyn Error>> {
 
         // println!("espnowaddr: {:?}", esp
 
-        let mut fromid: u8 = 0;
+        // let mut fromid: u8 = 0;
 
         if debug_reply {
             let mut monobuf = [0; 1];
             let mut count = 0;
-            while port.read_exact(&mut monobuf).is_ok() {
-                // just print the chars we read.  good for debug from Serial.print() on the automato.
-                // print!("{}", monobuf[0] as char);
-                // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
-                // print the index, number, and char
-                println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
-                count = count + 1;
+            loop {
+                while port.read_exact(&mut monobuf).is_ok() {
+                    // just print the chars we read.  good for debug from Serial.print() on the automato.
+                    // print!("{}", monobuf[0] as char);
+                    // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
+                    // print the index, number, and char
+                    println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
+                    count = count + 1;
+                }
+                sleep(time::Duration::from_secs(1));
             }
             // let mut buf = String::new();
             // let mut monobuf = [0; 1];
