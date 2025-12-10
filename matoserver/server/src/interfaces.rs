@@ -32,15 +32,15 @@ pub fn public_interface(
             unsafe {
                 mb.payload = am::Payload::from(am.message);
                 let mut port = data.port.lock()?;
-                am::write_message(&mut **port, &mb, am.id)?;
+                am::write_message(&mut **port, &mb, &am.id)?;
 
-                let mut fromid: u8 = 0;
+                // let mut fromid: u8 = 0;
                 // set to more than the hardcoded RHMesh timeout, which is 4000ms
                 port.set_timeout(Duration::from_millis(4420))?;
 
-                match am::read_message(&mut **port, &mut retmsg, &mut fromid) {
-                    Ok(()) => {
-                        println!("reply from: {}", fromid);
+                match am::read_message(&mut **port, &mut retmsg) {
+                    Ok(fromid) => {
+                        println!("reply from: {:?}", fromid);
                         // for i in 0..retmsg.buf.len() {
                         //     let c = retmsg.buf[i];
                         //     println!("{} - {}", c, c as char);

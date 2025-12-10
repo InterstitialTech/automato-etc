@@ -1,3 +1,4 @@
+use actix_web::dev::Payload;
 use clap::Arg;
 use std::time::Duration;
 mod config;
@@ -90,7 +91,11 @@ fn defcon() -> Config {
         ip: "127.0.0.1".to_string(),
         port: 8000,
         static_path: None,
-        automato_ids: [].to_vec(),
+        automato_ids: [
+            am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c]),
+            am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x67, 0xe4]),
+        ]
+        .to_vec(),
     }
 }
 
@@ -186,6 +191,7 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 elm_rs::export!(
                     "Payload",
                     &mut target,
+                    am::AutomatoId,
                     am::RemoteInfo,
                     am::Pinval,
                     am::AnalogPinval,
@@ -242,12 +248,20 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 .unwrap();
 
                 let output = String::from_utf8(target).unwrap();
+
+                let impout = output.replace(
+                    "import Json.Encode",
+                    r#"import Json.Encode
+import Payload exposing (AutomatoId, automatoIdDecoder, automatoIdEncoder, PayloadEnum, payloadEnumDecoder, payloadEnumEncoder)
+import SerialError exposing (Error, errorDecoder, errorEncoder)"#,
+                );
+
                 let outf = ed
                     .join("Messages.elm")
                     .to_str()
                     .ok_or(simple_error!("bad path"))?
                     .to_string();
-                util::write_string(outf.as_str(), output.as_str())?;
+                util::write_string(outf.as_str(), impout.as_str())?;
                 println!("wrote file: {}", outf);
             }
 
@@ -257,11 +271,30 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
         None => (),
     }
 
+    println!(
+        "eid: {:?}",
+        [am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c])]
+    );
+
     match matches.value_of("writeconfig") {
         Some(exportfile) => {
             let config = defcon();
+            println!("test");
+            println!(
+                "{:?}",
+                toml::to_string(&am::AutomatoId::EspNow([
+                    0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c
+                ]))
+            );
+            println!(
+                "{:?}",
+                toml::to_string(&[am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c])])
+            );
+            println!("{:?}", toml::to_string(&config));
+            println!("writing config to {}", exportfile);
             util::write_string(exportfile, toml::to_string_pretty(&config)?.as_str())?;
 
+            println!("wrote config to {}", exportfile);
             Ok(())
         }
         None => {

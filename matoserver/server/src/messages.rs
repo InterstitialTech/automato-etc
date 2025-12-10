@@ -1,11 +1,8 @@
 use crate::serial_error;
-use crate::Config;
 use automato::automatomsg as am;
 use elm_rs::{Elm, ElmJson};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
-use serialport;
-use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerResponse {
@@ -19,14 +16,9 @@ pub struct PublicMessage {
     pub data: Option<serde_json::Value>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ListAutomato {
-    pub id: i64,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, Elm, ElmJson)]
 pub struct AutomatoMsg {
-    pub id: u8,
+    pub id: am::AutomatoId,
     pub message: am::PayloadEnum,
 }
 

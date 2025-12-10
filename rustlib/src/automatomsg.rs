@@ -9,6 +9,12 @@ use std::mem::size_of;
 // message structs.
 // --------------------------------------------------------
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Elm, ElmJson)]
+pub enum AutomatoId {
+    Lora(u8),
+    EspNow([u8; 6]),
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum PayloadType {
@@ -386,6 +392,7 @@ pub union Msgbuf {
 #[repr(u8)]
 pub enum ResultCode {
     RcOk,
+    RcForwarded,
     RcNoMessageReceived,
     ReEspNowError,
     RcInvalidMessageType,
@@ -680,6 +687,17 @@ pub unsafe fn print_payload(p: &Payload) {
     }
 }
 
+pub unsafe fn write_message(
+    port: &mut dyn serialport::SerialPort,
+    msg: &Msgbuf,
+    id: &AutomatoId,
+) -> Result<(), serialport::Error> {
+    match id {
+        AutomatoId::Lora(idu8) => write_lora_message(port, msg, *idu8),
+        AutomatoId::EspNow(idarray) => write_espnow_message(port, msg, *idarray),
+    }
+}
+
 pub unsafe fn write_lora_message(
     port: &mut dyn serialport::SerialPort,
     msg: &Msgbuf,
@@ -714,26 +732,10 @@ pub unsafe fn write_espnow_message(
     port.write(&[toid[3]])?;
     port.write(&[toid[4]])?;
     port.write(&[toid[5]])?;
-    // port.write(&toid[1])?;
-    // port.write(&toid[2])?;
-    // port.write(&toid[3])?;
-    // port.write(&toid[4])?;
-    // port.write(&toid[5])?;
     port.write(&[sz as u8])?;
     port.write(&msg.buf[0..sz + 1])?;
 
     Ok(())
-}
-
-// pub enum IdType {
-//     Lora,
-//     EspNow,
-// };
-
-#[derive(Clone, Copy, Debug)]
-pub enum AutomatoId {
-    Lora(u8),
-    EspNow([u8; 6]),
 }
 
 pub unsafe fn read_message(

@@ -9,6 +9,7 @@ import Element.Font as EF
 import Element.Input as EI
 import Element.Region
 import MsCommon as MC
+import Payload
 import Route
 import TangoColors as TC
 import Toop
@@ -17,7 +18,7 @@ import WindowKeys as WK
 
 
 type Msg
-    = SelectPress Data.AutomatoId
+    = SelectPress Payload.AutomatoId
     | DonePress
 
 
@@ -27,7 +28,7 @@ type alias Model =
 
 
 type Command
-    = Selected Data.AutomatoId
+    = Selected Payload.AutomatoId
     | Done
     | None
 
@@ -47,12 +48,12 @@ view size model =
             85
     in
     E.column [] <|
-        [ E.text "automatos:" ]
-            ++ List.map
+        E.text "automatos:"
+            :: List.map
                 (\la ->
                     E.link MC.myLinkStyle
-                        { url = Route.AutomatoViewR (Data.getAutomatoIdVal la.id) |> Route.routeUrl
-                        , label = E.text <| String.fromInt (Data.getAutomatoIdVal la.id)
+                        { url = Route.AutomatoViewR la.id |> Route.routeUrl
+                        , label = E.text <| Data.showAutomatoId la.id
                         }
                 )
                 model.automatos

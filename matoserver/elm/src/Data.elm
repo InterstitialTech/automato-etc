@@ -1,13 +1,25 @@
-module Data exposing (AutomatoId(..), FieldValue(..), ListAutomato, decodeListAutomato, decodeValue, encodeFieldValue, getAutomatoIdVal, makeAutomatoId, showFieldValue, strToFieldValue)
+module Data exposing
+    ( FieldValue(..)
+    , ListAutomato
+    , decodeListAutomato
+    , decodeValue
+    , encodeFieldValue
+    , parseAutomatoId
+    , showAutomatoId
+    , showFieldValue
+    , strToFieldValue
+    )
+
+-- import Json.Encode as JE
+-- import Url.Builder as UB
 
 import Bytes
 import Bytes.Decode
 import Bytes.Encode
 import Bytes.Extra as BE
+import Hex
 import Json.Decode as JD
-import Json.Encode as JE
-import Payload
-import Url.Builder as UB
+import Payload exposing (AutomatoId, automatoIdDecoder)
 import Util exposing (andMap)
 
 
@@ -239,22 +251,55 @@ strToFieldValue rfr str =
 -------------------------------------------
 -- Id types.  They're all ints underneath.
 -------------------------------------------
+-- type AutomatoId
+--     = AutomatoId Int
+-- makeAutomatoId : Int -> AutomatoId
+-- makeAutomatoId i =
+--     AutomatoId i
+-- getAutomatoIdVal : AutomatoId -> Int
+-- getAutomatoIdVal uid =
+--     case uid of
+--         AutomatoId i ->
+--             i
+--
 
 
-type AutomatoId
-    = AutomatoId Int
+showAutomatoId : Payload.AutomatoId -> String
+showAutomatoId aid =
+    case aid of
+        Payload.Lora id ->
+            String.fromInt id
+
+        Payload.EspNow id ->
+            String.concat (List.map Hex.toString id)
 
 
-makeAutomatoId : Int -> AutomatoId
-makeAutomatoId i =
-    AutomatoId i
+parseAutomatoId : String -> Maybe Payload.AutomatoId
+parseAutomatoId s =
+    case String.toInt s of
+        Just i ->
+            Just <| Payload.Lora i
 
+        Nothing ->
+            case String.toList s of
+                [ l1, r1, l2, r2, l3, r3, l4, r4, l5, r5, l6, r6 ] ->
+                    let
+                        hx =
+                            [ Hex.fromString <| String.fromList [ l1, r1 ]
+                            , Hex.fromString <| String.fromList [ l2, r2 ]
+                            , Hex.fromString <| String.fromList [ l3, r3 ]
+                            , Hex.fromString <| String.fromList [ l4, r4 ]
+                            , Hex.fromString <| String.fromList [ l5, r5 ]
+                            , Hex.fromString <| String.fromList [ l6, r6 ]
+                            ]
+                    in
+                    hx
+                        |> List.map Result.toMaybe
+                        |> Util.mblist
+                        |> Maybe.map Payload.EspNow
 
-getAutomatoIdVal : AutomatoId -> Int
-getAutomatoIdVal uid =
-    case uid of
-        AutomatoId i ->
-            i
+                _ ->
+                    Nothing
 
 
 
@@ -266,4 +311,4 @@ getAutomatoIdVal uid =
 decodeListAutomato : JD.Decoder ListAutomato
 decodeListAutomato =
     JD.succeed ListAutomato
-        |> andMap (JD.field "id" JD.int |> JD.map makeAutomatoId)
+        |> andMap (JD.field "id" automatoIdDecoder)

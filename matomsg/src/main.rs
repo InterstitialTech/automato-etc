@@ -249,7 +249,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         .timeout(Duration::from_millis(timeout))
         .open()?;
 
-    let debug_reply = false;
+    let debug_reply = true;
     unsafe {
         match (mb_automato_lora_addr, mb_automato_espnow_addr) {
             (Some(loraaddr), _) => am::write_lora_message(&mut *port, &mb, loraaddr)?,
@@ -268,7 +268,6 @@ fn err_main() -> Result<(), Box<dyn Error>> {
                 while port.read_exact(&mut monobuf).is_ok() {
                     // just print the chars we read.  good for debug from Serial.print() on the automato.
                     // print!("{}", monobuf[0] as char);
-                    // println!("{} '{}'", monobuf[0] as u8, monobuf[0] as char);
                     // print the index, number, and char
                     println!("{} - {} - {}", count, monobuf[0] as u8, monobuf[0] as char);
                     count = count + 1;

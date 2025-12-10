@@ -25,14 +25,14 @@
             "elm/url": "1.0.0",
             "mdgriffith/elm-ui": "1.1.8",
             "myrho/elm-round": "1.0.4",
-            "periodic/elm-csv": "2.0.1"
+            "periodic/elm-csv": "2.0.1",
+            "rtfeldman/elm-hex": "1.0.0"
         },
         "indirect": {
             "TSFoster/elm-md5": "2.0.1",
             "TSFoster/elm-sha1": "2.1.1",
             "danfishgold/base64-bytes": "1.1.0",
-            "elm/virtual-dom": "1.0.2",
-            "rtfeldman/elm-hex": "1.0.0"
+            "elm/virtual-dom": "1.0.2"
         }
     },
     "test-dependencies": {

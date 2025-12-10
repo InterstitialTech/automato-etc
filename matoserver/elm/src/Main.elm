@@ -601,7 +601,7 @@ actualupdate msg model =
                     ( { model | state = AutomatoListing nm }
                     , sendPIMsg model.location <|
                         PI.SendAutomatoMsg
-                            { id = Data.getAutomatoIdVal id
+                            { id = id
                             , message = Payload.PeReadinfo
                             }
                     )

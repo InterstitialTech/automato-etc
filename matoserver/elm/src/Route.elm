@@ -1,5 +1,7 @@
 module Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
 
+import Data
+import Payload
 import UUID exposing (UUID)
 import Url exposing (Url)
 import Url.Builder as UB
@@ -7,7 +9,7 @@ import Url.Parser as UP exposing ((</>))
 
 
 type Route
-    = AutomatoViewR Int
+    = AutomatoViewR Payload.AutomatoId
     | Top
 
 
@@ -15,7 +17,7 @@ routeTitle : String -> Route -> String
 routeTitle appname route =
     case route of
         AutomatoViewR id ->
-            "automatoview " ++ String.fromInt id
+            "automatoview " ++ Data.showAutomatoId id
 
         Top ->
             appname
@@ -28,7 +30,7 @@ parseUrl url =
             [ UP.map AutomatoViewR <|
                 UP.s
                     "automatoview"
-                    </> UP.int
+                    </> UP.custom "automatoid" Data.parseAutomatoId
             , UP.map Top <| UP.top
             ]
         )
@@ -42,4 +44,4 @@ routeUrl route =
             UB.absolute [] []
 
         AutomatoViewR id ->
-            UB.absolute [ "automatoview", String.fromInt id ] []
+            UB.absolute [ "automatoview", Data.showAutomatoId id ] []

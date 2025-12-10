@@ -8,7 +8,7 @@ import File
 import Http
 import Json.Decode
 import Json.Encode
-import Payload exposing (PayloadEnum, payloadEnumDecoder, payloadEnumEncoder)
+import Payload exposing (AutomatoId, PayloadEnum, automatoIdDecoder, automatoIdEncoder, payloadEnumDecoder, payloadEnumEncoder)
 import SerialError exposing (Error, errorDecoder, errorEncoder)
 import Url.Builder
 
@@ -32,7 +32,7 @@ resultEncoder errEncoder okEncoder enum =
 
 
 type alias AutomatoMsg =
-    { id : Int
+    { id : AutomatoId
     , message : PayloadEnum
     }
 
@@ -40,7 +40,7 @@ type alias AutomatoMsg =
 automatoMsgEncoder : AutomatoMsg -> Json.Encode.Value
 automatoMsgEncoder struct =
     Json.Encode.object
-        [ ( "id", Json.Encode.int struct.id )
+        [ ( "id", automatoIdEncoder struct.id )
         , ( "message", payloadEnumEncoder struct.message )
         ]
 
@@ -48,7 +48,7 @@ automatoMsgEncoder struct =
 automatoMsgDecoder : Json.Decode.Decoder AutomatoMsg
 automatoMsgDecoder =
     Json.Decode.succeed AutomatoMsg
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "id" Json.Decode.int))
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "id" automatoIdDecoder))
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "message" payloadEnumDecoder))
 
 

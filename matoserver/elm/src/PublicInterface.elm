@@ -68,8 +68,8 @@ serverResponseDecoder =
                         JD.map ServerError (JD.at [ "content" ] JD.string)
 
                     "automatos" ->
-                        JD.at [ "content" ] (JD.list JD.int)
-                            |> JD.map (List.map (\id -> { id = Data.makeAutomatoId id }))
+                        JD.at [ "content" ] (JD.list Payload.automatoIdDecoder)
+                            |> JD.map (List.map (\id -> { id = id }))
                             |> JD.map AutomatoList
 
                     "automatomsg" ->

@@ -1,3 +1,4 @@
+use automato::automatomsg::AutomatoId;
 use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -6,5 +7,5 @@ pub struct Config {
     pub ip: String,
     pub port: u16,
     pub static_path: Option<PathBuf>,
-    pub automato_ids: Vec<u8>,
+    pub automato_ids: Vec<AutomatoId>,
 }

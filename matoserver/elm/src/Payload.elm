@@ -29,6 +29,26 @@ resultEncoder errEncoder okEncoder enum =
             Json.Encode.object [ ( "Err", errEncoder inner ) ]
 
 
+type AutomatoId
+    = Lora (Int)
+    | EspNow (List (Int))
+
+
+automatoIdEncoder : AutomatoId -> Json.Encode.Value
+automatoIdEncoder enum =
+    case enum of
+        Lora inner ->
+            Json.Encode.object [ ( "Lora", Json.Encode.int inner ) ]
+        EspNow inner ->
+            Json.Encode.object [ ( "EspNow", Json.Encode.list (Json.Encode.int) inner ) ]
+
+automatoIdDecoder : Json.Decode.Decoder AutomatoId
+automatoIdDecoder = 
+    Json.Decode.oneOf
+        [ Json.Decode.map Lora (Json.Decode.field "Lora" (Json.Decode.int))
+        , Json.Decode.map EspNow (Json.Decode.field "EspNow" (Json.Decode.list (Json.Decode.int)))
+        ]
+
 type alias RemoteInfo =
     { protoversion : Float
     , macAddress : Int

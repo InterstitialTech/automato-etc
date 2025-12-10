@@ -15,7 +15,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Messages exposing (AutomatoMsg)
 import MsCommon as MS
-import Payload
+import Payload exposing (AutomatoId)
 import Round as R
 import SerialError
 import Set
@@ -58,7 +58,7 @@ type alias MsgWhat =
 
 type alias Model =
     { automatoinfo : Payload.RemoteInfo
-    , id : Int
+    , id : AutomatoId
     , temperature : Maybe Float
     , humidity : Maybe Float
     , fields : Dict Int Field
@@ -80,7 +80,7 @@ headerStyle =
     [ EF.bold ]
 
 
-init : Int -> Payload.RemoteInfo -> Int -> ( Model, Command )
+init : Payload.AutomatoId -> Payload.RemoteInfo -> Int -> ( Model, Command )
 init automatoid ai requestIdCount =
     let
         pendingMsgs0 =
