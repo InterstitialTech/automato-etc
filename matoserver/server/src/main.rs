@@ -276,86 +276,83 @@ import SerialError exposing (Error, errorDecoder, errorEncoder)"#,
         [am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c])]
     );
 
-    match matches.value_of("writeconfig") {
-        Some(exportfile) => {
-            let config = defcon();
-            println!("test");
-            println!(
-                "{:?}",
-                toml::to_string(&am::AutomatoId::EspNow([
-                    0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c
-                ]))
-            );
-            println!(
-                "{:?}",
-                toml::to_string(&[am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c])])
-            );
-            println!("{:?}", toml::to_string(&config));
-            println!("writing config to {}", exportfile);
-            util::write_string(exportfile, toml::to_string_pretty(&config)?.as_str())?;
+    if let Some(exportfile) = matches.value_of("writeconfig") {
+        let config = defcon();
+        println!("test");
+        println!(
+            "{:?}",
+            toml::to_string(&am::AutomatoId::EspNow([
+                0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c
+            ]))
+        );
+        println!(
+            "{:?}",
+            toml::to_string(&[am::AutomatoId::EspNow([0xe4, 0xb3, 0x23, 0x8d, 0x66, 0x3c])])
+        );
+        println!("{:?}", toml::to_string(&config));
+        println!("writing config to {}", exportfile);
+        util::write_string(exportfile, toml::to_string_pretty(&config)?.as_str())?;
 
-            println!("wrote config to {}", exportfile);
-            Ok(())
+        println!("wrote config to {}", exportfile);
+        return Ok(());
+    };
+
+    // normal server ops
+    env_logger::init();
+
+    info!("server init!");
+
+    let (port, baud, timeout) = match (
+        matches.value_of("port"),
+        matches.value_of("baud"),
+        matches.value_of("timeout"),
+    ) {
+        (Some(port), Some(baudstr), Some(timeout)) => {
+            let baud = baudstr.parse::<u32>()?;
+            (port, baud, timeout.parse::<u64>()?)
         }
-        None => {
-            // normal server ops
-            env_logger::init();
+        _ => bail!("arg failure"),
+    };
 
-            info!("server init!");
+    let mut config = load_config();
 
-            let (port, baud, timeout) = match (
-                matches.value_of("port"),
-                matches.value_of("baud"),
-                matches.value_of("timeout"),
-            ) {
-                (Some(port), Some(baudstr), Some(timeout)) => {
-                    let baud = baudstr.parse::<u32>()?;
-                    (port, baud, timeout.parse::<u64>()?)
-                }
-                _ => bail!("arg failure"),
-            };
-
-            let mut config = load_config();
-
-            if config.static_path == None {
-                for (key, value) in env::vars() {
-                    if key == "MATOSERVER_STATIC_PATH" {
-                        config.static_path = PathBuf::from_str(value.as_str()).ok();
-                    }
-                }
+    if config.static_path == None {
+        for (key, value) in env::vars() {
+            if key == "MATOSERVER_STATIC_PATH" {
+                config.static_path = PathBuf::from_str(value.as_str()).ok();
             }
-
-            info!("config: {:?}", config);
-
-            let port = serialport::new(port, baud)
-                .data_bits(serialport::DataBits::Eight)
-                .flow_control(serialport::FlowControl::None)
-                .parity(serialport::Parity::None)
-                .stop_bits(serialport::StopBits::One)
-                .timeout(Duration::from_millis(timeout))
-                .open()?;
-
-            let mp = Arc::new(Mutex::new(port));
-
-            let c = config.clone();
-
-            HttpServer::new(move || {
-                let staticpath = c.static_path.clone().unwrap_or(PathBuf::from("static/"));
-                App::new()
-                    .data(ServerData {
-                        port: mp.clone(),
-                        config: c.clone(),
-                    }) // <- create app with shared state
-                    .wrap(middleware::Logger::default())
-                    .service(web::resource("/public").route(web::post().to(public)))
-                    .service(actix_files::Files::new("/static/", staticpath))
-                    .service(web::resource("/{tail:.*}").route(web::get().to(mainpage)))
-            })
-            .bind(format!("{}:{}", config.ip, config.port))?
-            .run()
-            .await?;
-
-            Ok(())
         }
     }
+
+    info!("config: {:?}", config);
+
+    let port = serialport::new(port, baud)
+        .data_bits(serialport::DataBits::Eight)
+        .flow_control(serialport::FlowControl::None)
+        .parity(serialport::Parity::None)
+        .stop_bits(serialport::StopBits::One)
+        .timeout(Duration::from_millis(timeout))
+        .open()?;
+
+    let mp = Arc::new(Mutex::new(port));
+
+    let c = config.clone();
+
+    HttpServer::new(move || {
+        let staticpath = c.static_path.clone().unwrap_or(PathBuf::from("static/"));
+        App::new()
+            .data(ServerData {
+                port: mp.clone(),
+                config: c.clone(),
+            }) // <- create app with shared state
+            .wrap(middleware::Logger::default())
+            .service(web::resource("/public").route(web::post().to(public)))
+            .service(actix_files::Files::new("/static/", staticpath))
+            .service(web::resource("/{tail:.*}").route(web::get().to(mainpage)))
+    })
+    .bind(format!("{}:{}", config.ip, config.port))?
+    .run()
+    .await?;
+
+    Ok(())
 }
