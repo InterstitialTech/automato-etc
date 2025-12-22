@@ -31,6 +31,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import LocalStorage as LS
+import Messages as M
 import Payload
 import PublicInterface as PI
 import Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
@@ -50,8 +51,8 @@ import WindowKeys
 
 type Msg
     = ShowMessageMsg ShowMessage.Msg
-    | PublicReplyData (Maybe String) (Result Http.Error PI.ServerResponse)
-    | AutomatoMsgReplyData AutomatoView.MsgWhat (Result Http.Error PI.ServerResponse)
+    | PublicReplyData (Result Http.Error M.ServerResponse)
+    | AutomatoMsgReplyData AutomatoView.MsgWhat (Result Http.Error M.ServerResponse)
     | LoadUrl String
     | InternalUrl Url
     | SelectedText JD.Value
@@ -141,7 +142,7 @@ routeState model route =
         AutomatoViewR id ->
             ( (displayMessageDialog model "loading automato info").state
             , sendPIMsg model.location
-                (PI.SendAutomatoMsg
+                (M.PrAutomatoMsg
                     { id = id
                     , message = Payload.PeReadinfo
                     }
@@ -172,7 +173,7 @@ showMessage msg =
         ShowMessageMsg _ ->
             "ShowMessageMsg"
 
-        PublicReplyData what urd ->
+        PublicReplyData urd ->
             "PublicReplyData: "
                 ++ (Result.map PI.showServerResponse urd
                         |> Result.mapError Util.httpErrorString
@@ -278,17 +279,17 @@ viewState size state model =
             E.map AutomatoViewMsg <| AutomatoView.view size model.timezone em
 
 
-sendPIMsg : String -> PI.SendMsg -> Cmd Msg
+sendPIMsg : String -> M.PublicMessage -> Cmd Msg
 sendPIMsg location msg =
-    sendPIMsgExp location msg (PublicReplyData Nothing)
+    sendPIMsgExp location msg PublicReplyData
 
 
-sendPIMsgExp : String -> PI.SendMsg -> (Result Http.Error PI.ServerResponse -> Msg) -> Cmd Msg
+sendPIMsgExp : String -> M.PublicMessage -> (Result Http.Error M.ServerResponse -> Msg) -> Cmd Msg
 sendPIMsgExp location msg tomsg =
     Http.post
         { url = location ++ "/public"
-        , body = Http.jsonBody (PI.encodeSendMsg msg)
-        , expect = Http.expectJson tomsg PI.serverResponseDecoder
+        , body = Http.jsonBody (M.publicMessageEncoder msg)
+        , expect = Http.expectJson tomsg M.serverResponseDecoder
         }
 
 
@@ -490,17 +491,24 @@ actualupdate msg model =
         ( WindowSize s, _ ) ->
             ( { model | size = s }, Cmd.none )
 
-        ( PublicReplyData what urd, state ) ->
+        ( PublicReplyData urd, state ) ->
             case urd of
                 Err e ->
                     ( displayMessageDialog model <| Util.httpErrorString e, Cmd.none )
 
                 Ok uiresponse ->
                     case uiresponse of
-                        PI.ServerError e ->
+                        M.SrGenericError e ->
                             ( displayMessageDialog model <| e, Cmd.none )
 
-                        PI.AutomatoList x ->
+                        M.SrSerialPorts infolist ->
+                            let
+                                _ =
+                                    Debug.log "serialports: " infolist
+                            in
+                            ( model, Cmd.none )
+
+                        M.SrAutomatos x ->
                             ( { model
                                 | state =
                                     AutomatoListing (AutomatoListing.init x)
@@ -508,7 +516,7 @@ actualupdate msg model =
                             , Cmd.none
                             )
 
-                        PI.AutomatoMsg am ->
+                        M.SrAutomatoMsg am ->
                             case ( model.state, am.message ) of
                                 -- ( AutomatoView av, _ ) ->
                                 --     handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
@@ -522,7 +530,7 @@ actualupdate msg model =
                                 _ ->
                                     ( model, Cmd.none )
 
-                        PI.SerialError se ->
+                        M.SrSerialError se ->
                             ( displayMessageDialog model (JE.encode 2 (SerialError.errorEncoder se)), Cmd.none )
 
         ( AutomatoMsgReplyData what urd, state ) ->
@@ -532,10 +540,17 @@ actualupdate msg model =
 
                 Ok uiresponse ->
                     case uiresponse of
-                        PI.ServerError e ->
+                        M.SrGenericError e ->
                             ( displayMessageDialog model <| e, Cmd.none )
 
-                        PI.AutomatoList x ->
+                        M.SrSerialPorts infolist ->
+                            let
+                                _ =
+                                    Debug.log "serialports: " infolist
+                            in
+                            ( model, Cmd.none )
+
+                        M.SrAutomatos x ->
                             ( { model
                                 | state =
                                     AutomatoListing (AutomatoListing.init x)
@@ -543,7 +558,7 @@ actualupdate msg model =
                             , Cmd.none
                             )
 
-                        PI.AutomatoMsg am ->
+                        M.SrAutomatoMsg am ->
                             case ( model.state, am.message ) of
                                 ( AutomatoView av, _ ) ->
                                     handleAutomatoView model (AutomatoView.onAutomatoMsg am what av)
@@ -558,7 +573,7 @@ actualupdate msg model =
                                 _ ->
                                     ( model, Cmd.none )
 
-                        PI.SerialError se ->
+                        M.SrSerialError se ->
                             case model.state of
                                 AutomatoView av ->
                                     handleAutomatoView model (AutomatoView.onSerialError se what av)
@@ -600,7 +615,7 @@ actualupdate msg model =
                 AutomatoListing.Selected id ->
                     ( { model | state = AutomatoListing nm }
                     , sendPIMsg model.location <|
-                        PI.SendAutomatoMsg
+                        M.PrAutomatoMsg
                             { id = id
                             , message = Payload.PeReadinfo
                             }
@@ -637,7 +652,7 @@ handleAutomatoView model ( nm, cmd ) =
     case cmd of
         AutomatoView.Done ->
             ( { model | state = AutomatoView nm }
-            , sendPIMsg model.location <| PI.GetAutomatoList
+            , sendPIMsg model.location <| M.PrGetAutomatoList
             )
 
         AutomatoView.ShowError e ->
@@ -648,7 +663,7 @@ handleAutomatoView model ( nm, cmd ) =
                 | state = AutomatoView nm
                 , requestIdCount = 0
               }
-            , sendPIMsgExp model.location (PI.SendAutomatoMsg am) (AutomatoMsgReplyData what)
+            , sendPIMsgExp model.location (M.PrAutomatoMsg am) (AutomatoMsgReplyData what)
             )
 
         AutomatoView.None ->
@@ -676,7 +691,7 @@ initialPage curmodel =
     ( { curmodel
         | state = PubShowMessage { message = "retrieving automato list" } Nothing
       }
-    , sendPIMsg curmodel.location <| PI.GetAutomatoList
+    , sendPIMsg curmodel.location <| M.PrGetAutomatoList
     )
         |> (\( m, c ) ->
                 ( m

@@ -18,11 +18,12 @@ pub fn public_interface(
             data.config.automato_ids.clone(),
         )),
         PublicMessage::PrGetSerialPortList => {
-            let x = available_ports()?;
+            let ports = available_ports()?
+                .iter()
+                .map(|s| get_port_info(&s))
+                .collect();
 
-            let y = x.iter().map(|s| get_port_info(&s)).collect();
-
-            Ok(ServerResponse::SrSerialPorts(y))
+            Ok(ServerResponse::SrSerialPorts(ports))
         }
         PublicMessage::PrAutomatoMsg(am) => {
             let mut mb = am::Msgbuf {

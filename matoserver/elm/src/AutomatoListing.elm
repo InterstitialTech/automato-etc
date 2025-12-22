@@ -8,6 +8,7 @@ import Element.Border as EBd
 import Element.Font as EF
 import Element.Input as EI
 import Element.Region
+import Messages as M
 import MsCommon as MC
 import Payload
 import Route
@@ -23,7 +24,7 @@ type Msg
 
 
 type alias Model =
-    { automatos : List Data.ListAutomato
+    { automatos : List Payload.AutomatoId
     }
 
 
@@ -33,7 +34,7 @@ type Command
     | None
 
 
-init : List Data.ListAutomato -> Model
+init : List Payload.AutomatoId -> Model
 init automatos =
     { automatos = automatos }
 
@@ -52,8 +53,8 @@ view size model =
             :: List.map
                 (\la ->
                     E.link MC.myLinkStyle
-                        { url = Route.AutomatoViewR la.id |> Route.routeUrl
-                        , label = E.text <| Data.showAutomatoId la.id
+                        { url = Route.AutomatoViewR la |> Route.routeUrl
+                        , label = E.text <| Data.showAutomatoId la
                         }
                 )
                 model.automatos
