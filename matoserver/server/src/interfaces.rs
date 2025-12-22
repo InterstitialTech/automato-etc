@@ -1,9 +1,10 @@
-use crate::data::ServerData;
+use crate::data::{get_port_info, ServerData};
 use crate::messages::AutomatoMsg;
 use crate::messages::{PublicMessage, ServerResponse};
 use crate::serial_error;
 use automato::automatomsg as am;
 use log::info;
+use serialport::available_ports;
 use std::error::Error;
 use std::time::Duration;
 
@@ -12,15 +13,19 @@ pub fn public_interface(
     data: &ServerData,
     msg: PublicMessage,
 ) -> Result<ServerResponse, Box<dyn Error + '_>> {
-    info!("process_public_json, what={}", msg.what.as_str());
-    match msg.what.as_str() {
-        "GetAutomatoList" => Ok(ServerResponse {
-            what: "automatos".to_string(),
-            content: serde_json::to_value(data.config.automato_ids.clone())?,
-        }),
-        "AutomatoMsg" => {
-            let msgdata = Option::ok_or(msg.data.as_ref(), "malformed json data")?;
-            let am: AutomatoMsg = serde_json::from_value(msgdata.clone())?;
+    // info!("process_public_json {}", msg.as_str());
+    match msg {
+        PublicMessage::GetAutomatoList => {
+            Ok(ServerResponse::Automatos(data.config.automato_ids.clone()))
+        }
+        PublicMessage::GetSerialPortList => {
+            let x = available_ports()?;
+
+            let y = x.iter().map(|s| get_port_info(&s)).collect();
+
+            Ok(ServerResponse::SerialPorts(y))
+        }
+        PublicMessage::AutomatoMsg(am) => {
             let mut mb = am::Msgbuf {
                 buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
             };
@@ -51,26 +56,16 @@ pub fn public_interface(
                             id: fromid,
                             message: am::PayloadEnum::from(retmsg.payload),
                         };
-                        Ok(ServerResponse {
-                            what: "automatomsg".to_string(),
-                            content: serde_json::to_value(rm)?,
-                        })
+                        Ok(ServerResponse::AutomatoMsg(rm))
                     }
                     Err(e) => {
                         println!("read_message err: {:?}", e);
                         let se = serial_error::Error::from(e);
-                        Ok(ServerResponse {
-                            what: "serial error".to_string(),
-                            content: serde_json::to_value(se)?,
-                            // content: serde_json::Value::Null,
-                        })
+                        Ok(ServerResponse::SerialError(se))
+                        // content: serde_json::Value::Null,
                     }
                 }
             }
         }
-        wat => Err(Box::new(simple_error::SimpleError::new(format!(
-            "invalid 'what' code:'{}'",
-            wat
-        )))),
     }
 }

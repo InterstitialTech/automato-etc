@@ -77,10 +77,7 @@ fn public(
         Ok(sr) => HttpResponse::Ok().json(sr),
         Err(e) => {
             error!("'public' err: {:?}", e);
-            let se = ServerResponse {
-                what: "server error".to_string(),
-                content: serde_json::Value::String(e.to_string()),
-            };
+            let se = ServerResponse::GenericError(e.to_string());
             HttpResponse::Ok().json(se)
         }
     }
