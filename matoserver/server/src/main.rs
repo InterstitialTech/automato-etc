@@ -77,7 +77,7 @@ fn public(
         Ok(sr) => HttpResponse::Ok().json(sr),
         Err(e) => {
             error!("'public' err: {:?}", e);
-            let se = ServerResponse::GenericError(e.to_string());
+            let se = ServerResponse::SrGenericError(e.to_string());
             HttpResponse::Ok().json(se)
         }
     }
@@ -238,9 +238,14 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                 elm_rs::export!(
                     "Messages",
                     &mut target,
+                    messages::ServerResponse,
+                    messages::PublicMessage,
                     messages::AutomatoMsg,
                     messages::WhatMsg,
-                    messages::WhatError
+                    messages::WhatError,
+                    messages::UsbPortInfo,
+                    messages::SerialPortType,
+                    messages::SerialPortInfo
                 )
                 .unwrap();
 

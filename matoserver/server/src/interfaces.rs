@@ -1,9 +1,8 @@
-use crate::data::{get_port_info, ServerData};
-use crate::messages::AutomatoMsg;
+use crate::data::ServerData;
+use crate::messages::{get_port_info, AutomatoMsg};
 use crate::messages::{PublicMessage, ServerResponse};
 use crate::serial_error;
 use automato::automatomsg as am;
-use log::info;
 use serialport::available_ports;
 use std::error::Error;
 use std::time::Duration;
@@ -15,17 +14,17 @@ pub fn public_interface(
 ) -> Result<ServerResponse, Box<dyn Error + '_>> {
     // info!("process_public_json {}", msg.as_str());
     match msg {
-        PublicMessage::GetAutomatoList => {
-            Ok(ServerResponse::Automatos(data.config.automato_ids.clone()))
-        }
-        PublicMessage::GetSerialPortList => {
+        PublicMessage::PrGetAutomatoList => Ok(ServerResponse::SrAutomatos(
+            data.config.automato_ids.clone(),
+        )),
+        PublicMessage::PrGetSerialPortList => {
             let x = available_ports()?;
 
             let y = x.iter().map(|s| get_port_info(&s)).collect();
 
-            Ok(ServerResponse::SerialPorts(y))
+            Ok(ServerResponse::SrSerialPorts(y))
         }
-        PublicMessage::AutomatoMsg(am) => {
+        PublicMessage::PrAutomatoMsg(am) => {
             let mut mb = am::Msgbuf {
                 buf: [0; am::RH_RF95_MAX_MESSAGE_LEN],
             };
@@ -56,12 +55,12 @@ pub fn public_interface(
                             id: fromid,
                             message: am::PayloadEnum::from(retmsg.payload),
                         };
-                        Ok(ServerResponse::AutomatoMsg(rm))
+                        Ok(ServerResponse::SrAutomatoMsg(rm))
                     }
                     Err(e) => {
                         println!("read_message err: {:?}", e);
                         let se = serial_error::Error::from(e);
-                        Ok(ServerResponse::SerialError(se))
+                        Ok(ServerResponse::SrSerialError(se))
                         // content: serde_json::Value::Null,
                     }
                 }
