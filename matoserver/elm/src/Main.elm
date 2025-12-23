@@ -1,32 +1,16 @@
 port module Main exposing (main)
 
--- import Random exposing (Seed, initialSeed)
--- import SelectString as SS
--- import AutomatoView
-
-import Array
 import AutomatoListing
 import AutomatoView
 import Browser
 import Browser.Events
 import Browser.Navigation
-import Common exposing (buttonStyle)
-import Data
-import Dict exposing (Dict)
+import Common
 import DisplayMessage
 import Element as E exposing (Element)
-import Element.Background as EBk
-import Element.Border as EBd
 import Element.Font as EF
-import Element.Input as EI
-import Element.Region
-import File as F
-import File.Download as FD
-import File.Select as FS
 import GenDialog as GD
-import Html exposing (Attribute, Html)
-import Html.Attributes
-import Html.Events as HE
+import Html exposing (Html)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -37,13 +21,10 @@ import PublicInterface as PI
 import Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
 import SerialError
 import ShowMessage
-import TDict exposing (TDict)
-import TangoColors as TC
-import Task exposing (Task)
+import Task
 import Time
 import Toop
 import Url exposing (Url)
-import Url.Builder as UB
 import Url.Parser as UP exposing ((</>))
 import Util
 import WindowKeys

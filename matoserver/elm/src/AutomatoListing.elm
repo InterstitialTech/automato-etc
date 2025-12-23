@@ -1,21 +1,11 @@
 module AutomatoListing exposing (..)
 
-import Common
 import Data
 import Element as E exposing (Element)
-import Element.Background as EBk
-import Element.Border as EBd
-import Element.Font as EF
-import Element.Input as EI
-import Element.Region
-import Messages as M
 import MsCommon as MC
 import Payload
 import Route
-import TangoColors as TC
-import Toop
 import Util
-import WindowKeys as WK
 
 
 type Msg

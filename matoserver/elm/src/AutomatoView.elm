@@ -1,31 +1,19 @@
 module AutomatoView exposing (..)
 
-import Calendar
 import Common
-import Csv
 import Data
 import Dict exposing (Dict)
 import Element as E exposing (Element)
 import Element.Background as EBk
-import Element.Border as EBd
 import Element.Events as EE
 import Element.Font as EF
 import Element.Input as EI
-import Json.Decode as JD
-import Json.Encode as JE
 import Messages exposing (AutomatoMsg)
-import MsCommon as MS
 import Payload exposing (AutomatoId)
-import Round as R
 import SerialError
-import Set
-import TDict exposing (TDict)
-import TSet exposing (TSet)
 import TangoColors as TC
 import Time
-import Toop
 import Util
-import WindowKeys as WK
 
 
 type Msg
