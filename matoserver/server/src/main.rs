@@ -336,8 +336,7 @@ import SerialError exposing (Error, errorDecoder, errorEncoder)"#,
         .timeout(Duration::from_millis(timeout))
         .open()?;
 
-    let mp = Arc::new(Mutex::new(port));
-
+    let mp = Arc::new(Mutex::new(Some(port)));
     let c = config.clone();
 
     HttpServer::new(move || {

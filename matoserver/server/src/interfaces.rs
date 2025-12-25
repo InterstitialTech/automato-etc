@@ -36,34 +36,39 @@ pub fn public_interface(
 
             unsafe {
                 mb.payload = am::Payload::from(am.message);
-                let mut port = data.port.lock()?;
-                am::write_message(&mut **port, &mb, &am.id)?;
+                let mut mp = data.port.lock()?;
+                match mp.as_mut() {
+                    Some(ref mut port) => {
+                        am::write_message(port.as_mut(), &mb, &am.id)?;
 
-                // let mut fromid: u8 = 0;
-                // set to more than the hardcoded RHMesh timeout, which is 4000ms
-                port.set_timeout(Duration::from_millis(4420))?;
+                        // let mut fromid: u8 = 0;
+                        // set to more than the hardcoded RHMesh timeout, which is 4000ms
+                        port.set_timeout(Duration::from_millis(4420))?;
 
-                match am::read_message(&mut **port, &mut retmsg) {
-                    Ok(fromid) => {
-                        println!("reply from: {:?}", fromid);
-                        // for i in 0..retmsg.buf.len() {
-                        //     let c = retmsg.buf[i];
-                        //     println!("{} - {}", c, c as char);
-                        // }
-                        am::print_payload(&retmsg.payload);
+                        match am::read_message(port.as_mut(), &mut retmsg) {
+                            Ok(fromid) => {
+                                println!("reply from: {:?}", fromid);
+                                // for i in 0..retmsg.buf.len() {
+                                //     let c = retmsg.buf[i];
+                                //     println!("{} - {}", c, c as char);
+                                // }
+                                am::print_payload(&retmsg.payload);
 
-                        let rm = AutomatoMsg {
-                            id: fromid,
-                            message: am::PayloadEnum::from(retmsg.payload),
-                        };
-                        Ok(ServerResponse::SrAutomatoMsg(rm))
+                                let rm = AutomatoMsg {
+                                    id: fromid,
+                                    message: am::PayloadEnum::from(retmsg.payload),
+                                };
+                                Ok(ServerResponse::SrAutomatoMsg(rm))
+                            }
+                            Err(e) => {
+                                println!("read_message err: {:?}", e);
+                                let se = serial_error::Error::from(e);
+                                Ok(ServerResponse::SrSerialError(se))
+                                // content: serde_json::Value::Null,
+                            }
+                        }
                     }
-                    Err(e) => {
-                        println!("read_message err: {:?}", e);
-                        let se = serial_error::Error::from(e);
-                        Ok(ServerResponse::SrSerialError(se))
-                        // content: serde_json::Value::Null,
-                    }
+                    None => Ok(ServerResponse::SrGenericError("no serial port".to_string())),
                 }
             }
         }

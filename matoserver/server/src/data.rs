@@ -4,5 +4,5 @@ use std::sync::{Arc, Mutex};
 
 pub struct ServerData {
     pub config: Config,
-    pub port: Arc<Mutex<Box<dyn serialport::SerialPort>>>,
+    pub port: Arc<Mutex<Option<Box<dyn serialport::SerialPort>>>>,
 }
