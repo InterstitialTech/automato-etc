@@ -1,4 +1,3 @@
-use actix_web::dev::Payload;
 use clap::Arg;
 use std::time::Duration;
 mod config;
@@ -13,7 +12,6 @@ use automato::automatomsg as am;
 use config::Config;
 use log::{error, info};
 use messages::{PublicMessage, ServerResponse};
-use serde_json;
 use std::path::Path;
 mod serial_error;
 use serialport;
@@ -316,6 +314,8 @@ import SerialError exposing (Error, errorDecoder, errorEncoder)"#,
         _ => bail!("arg failure"),
     };
 
+    info!("connecting to serial port: {} baud: {}", port, baud);
+
     let mut config = load_config();
 
     if config.static_path == None {
@@ -328,15 +328,22 @@ import SerialError exposing (Error, errorDecoder, errorEncoder)"#,
 
     info!("config: {:?}", config);
 
-    let port = serialport::new(port, baud)
+    let port = match serialport::new(port, baud)
         .data_bits(serialport::DataBits::Eight)
         .flow_control(serialport::FlowControl::None)
         .parity(serialport::Parity::None)
         .stop_bits(serialport::StopBits::One)
         .timeout(Duration::from_millis(timeout))
-        .open()?;
+        .open()
+    {
+        Ok(p) => Some(p),
+        Err(e) => {
+            error!("{:?}", e);
+            None
+        }
+    };
 
-    let mp = Arc::new(Mutex::new(Some(port)));
+    let mp = Arc::new(Mutex::new(port));
     let c = config.clone();
 
     HttpServer::new(move || {
