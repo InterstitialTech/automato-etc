@@ -20,6 +20,7 @@ import Payload
 import PublicInterface as PI
 import Route exposing (Route(..), parseUrl, routeTitle, routeUrl)
 import SerialError
+import SerialListing
 import ShowMessage
 import Task
 import Time
@@ -43,6 +44,7 @@ type Msg
     | Zone Time.Zone
     | WkMsg (Result JD.Error WindowKeys.Key)
     | ReceiveLocalVal { for : String, name : String, value : Maybe String }
+    | SerialListingMsg SerialListing.Msg
     | AutomatoListingMsg AutomatoListing.Msg
     | AutomatoViewMsg AutomatoView.Msg
     | Noop
@@ -51,6 +53,7 @@ type Msg
 type State
     = PubShowMessage ShowMessage.Model (Maybe State)
     | DisplayMessage DisplayMessage.GDModel State
+    | SerialListing SerialListing.Model
     | AutomatoListing AutomatoListing.Model
     | AutomatoView AutomatoView.Model
 
@@ -209,6 +212,9 @@ showMessage msg =
         Zone _ ->
             "Zone"
 
+        SerialListingMsg _ ->
+            "SerialListingMsg"
+
         AutomatoListingMsg _ ->
             "AutomatoListingMsg"
 
@@ -224,6 +230,9 @@ showState state =
 
         PubShowMessage _ _ ->
             "PubShowMessage"
+
+        SerialListing _ ->
+            "SerialListing"
 
         AutomatoListing _ ->
             "AutomatoListing"
@@ -252,6 +261,9 @@ viewState size state model =
         DisplayMessage em _ ->
             -- render is at the layout level, not here.
             E.none
+
+        SerialListing em ->
+            E.map SerialListingMsg <| SerialListing.view em
 
         AutomatoListing em ->
             E.map AutomatoListingMsg <| AutomatoListing.view size em
@@ -464,7 +476,7 @@ displayMessageDialog model message =
 
 actualupdate : Msg -> Model -> ( Model, Cmd Msg )
 actualupdate msg model =
-    case ( msg, model.state ) of
+    case Debug.log "msgstate" ( msg, model.state ) of
         ( ReceiveLocalVal lv, _ ) ->
             -- update the font size
             ( model, Cmd.none )
@@ -483,11 +495,15 @@ actualupdate msg model =
                             ( displayMessageDialog model <| e, Cmd.none )
 
                         M.SrSerialPorts infolist ->
-                            let
-                                _ =
-                                    Debug.log "serialports: " infolist
-                            in
-                            ( model, Cmd.none )
+                            ( { model
+                                | state =
+                                    SerialListing (SerialListing.init infolist)
+                              }
+                            , Cmd.none
+                            )
+
+                        M.SrSerialPortOpened s ->
+                            ( model, sendPIMsg model.location <| M.PrGetAutomatoList )
 
                         M.SrAutomatos x ->
                             ( { model
@@ -525,11 +541,15 @@ actualupdate msg model =
                             ( displayMessageDialog model <| e, Cmd.none )
 
                         M.SrSerialPorts infolist ->
-                            let
-                                _ =
-                                    Debug.log "serialports: " infolist
-                            in
-                            ( model, Cmd.none )
+                            ( { model
+                                | state =
+                                    SerialListing (SerialListing.init infolist)
+                              }
+                            , Cmd.none
+                            )
+
+                        M.SrSerialPortOpened s ->
+                            ( model, sendPIMsg model.location <| M.PrGetAutomatoList )
 
                         M.SrAutomatos x ->
                             ( { model
@@ -552,6 +572,7 @@ actualupdate msg model =
                                         )
 
                                 _ ->
+                                    -- TODO handle errors always!
                                     ( model, Cmd.none )
 
                         M.SrSerialError se ->
@@ -563,6 +584,7 @@ actualupdate msg model =
                                     handleAutomatoView model (AutomatoView.onSerialError se what av)
 
                                 _ ->
+                                    -- TODO handle errors always!
                                     ( model, Cmd.none )
 
         ( DisplayMessageMsg bm, DisplayMessage bs prevstate ) ->
@@ -586,6 +608,35 @@ actualupdate msg model =
 
         ( DisplayMessageMsg GD.Noop, _ ) ->
             ( model, Cmd.none )
+
+        ( SerialListingMsg ms, SerialListing st ) ->
+            let
+                ( nm, cmd ) =
+                    SerialListing.update ms st
+            in
+            case cmd of
+                SerialListing.Selected s ->
+                    ( { model | state = SerialListing nm }
+                    , sendPIMsg model.location <|
+                        M.PrOpenSerialPort s
+                    )
+
+                -- SerialListing.New ->
+                --     ( { model | state = SerialEdit (SerialEdit.initNew login) login }
+                --     , Cmd.none
+                --     )
+                SerialListing.Done ->
+                    ( { model | state = SerialListing nm }, Cmd.none )
+
+                -- SerialListing.Settings ->
+                --     ( { model
+                --         | state =
+                --             UserSettings (UserSettings.init login model.fontsize model.saveonclonk model.pageincrement) login model.state
+                --       }
+                --     , Cmd.none
+                --     )
+                SerialListing.None ->
+                    ( { model | state = SerialListing nm }, Cmd.none )
 
         ( AutomatoListingMsg ms, AutomatoListing st ) ->
             let
@@ -667,12 +718,31 @@ preinit flags url key =
     )
 
 
+
+-- initialPage : Model -> ( Model, Cmd Msg )
+-- initialPage curmodel =
+--     ( { curmodel
+--         | state = PubShowMessage { message = "retrieving automato list" } Nothing
+--       }
+--     , sendPIMsg curmodel.location <| M.PrGetAutomatoList
+--     )
+--         |> (\( m, c ) ->
+--                 ( m
+--                 , Cmd.batch
+--                     [ Browser.Navigation.replaceUrl m.navkey
+--                         (routeUrl (stateRoute m.state).route)
+--                     , c
+--                     ]
+--                 )
+--            )
+
+
 initialPage : Model -> ( Model, Cmd Msg )
 initialPage curmodel =
     ( { curmodel
-        | state = PubShowMessage { message = "retrieving automato list" } Nothing
+        | state = PubShowMessage { message = "retrieving serial port list" } Nothing
       }
-    , sendPIMsg curmodel.location <| M.PrGetAutomatoList
+    , sendPIMsg curmodel.location <| M.PrGetSerialPortList
     )
         |> (\( m, c ) ->
                 ( m

@@ -343,6 +343,7 @@ import SerialError exposing (Error, errorDecoder, errorEncoder)"#,
         }
     };
 
+    // let mp = Arc::new(Mutex::new(port));
     let mp = Arc::new(Mutex::new(port));
     let c = config.clone();
 

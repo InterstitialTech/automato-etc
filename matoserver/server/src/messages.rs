@@ -8,6 +8,7 @@ pub enum ServerResponse {
     SrAutomatos(Vec<AutomatoId>),
     SrAutomatoMsg(AutomatoMsg),
     SrSerialPorts(Vec<SerialPortInfo>),
+    SrSerialPortOpened(SerialPortInfo),
     SrSerialError(serial_error::Error),
     SrGenericError(String),
 }
@@ -17,6 +18,7 @@ pub enum PublicMessage {
     PrGetAutomatoList,
     PrAutomatoMsg(AutomatoMsg),
     PrGetSerialPortList,
+    PrOpenSerialPort(SerialPortInfo),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Elm, ElmJson)]

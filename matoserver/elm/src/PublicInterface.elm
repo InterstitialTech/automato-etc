@@ -20,3 +20,6 @@ showServerResponse sr =
 
         SrGenericError _ ->
             "SrGenericError"
+
+        SrSerialPortOpened _ ->
+            "SrSerialPortOpened"

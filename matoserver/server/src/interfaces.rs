@@ -3,6 +3,7 @@ use crate::messages::{get_port_info, AutomatoMsg};
 use crate::messages::{PublicMessage, ServerResponse};
 use crate::serial_error;
 use automato::automatomsg as am;
+use log::{error, info};
 use serialport::available_ports;
 use std::error::Error;
 use std::time::Duration;
@@ -24,6 +25,31 @@ pub fn public_interface(
                 .collect();
 
             Ok(ServerResponse::SrSerialPorts(ports))
+        }
+        PublicMessage::PrOpenSerialPort(spinfo) => {
+            // close existing port if open.
+            let mut mp = data.port.lock()?;
+            *mp = None;
+            match serialport::new(spinfo.port_name.clone(), 115200)
+                .data_bits(serialport::DataBits::Eight)
+                .flow_control(serialport::FlowControl::None)
+                .parity(serialport::Parity::None)
+                .stop_bits(serialport::StopBits::One)
+                .timeout(Duration::from_millis(420))
+                .open()
+            {
+                Ok(p) => {
+                    *mp = Some(p);
+                    Ok(ServerResponse::SrSerialPortOpened(spinfo))
+                }
+                Err(e) => {
+                    error!("{:?}", e);
+                    Ok(ServerResponse::SrGenericError(format!(
+                        "serial port error: {:?}",
+                        e
+                    )))
+                }
+            }
         }
         PublicMessage::PrAutomatoMsg(am) => {
             let mut mb = am::Msgbuf {
