@@ -476,7 +476,7 @@ displayMessageDialog model message =
 
 actualupdate : Msg -> Model -> ( Model, Cmd Msg )
 actualupdate msg model =
-    case Debug.log "msgstate" ( msg, model.state ) of
+    case ( msg, model.state ) of
         ( ReceiveLocalVal lv, _ ) ->
             -- update the font size
             ( model, Cmd.none )
