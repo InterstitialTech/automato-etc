@@ -61,6 +61,8 @@ type State
 type alias Flags =
     { location : String
     , useragent : String
+    , tauri : Bool
+    , mobile : Bool
     , width : Int
     , height : Int
     }
