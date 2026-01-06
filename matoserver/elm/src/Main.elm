@@ -538,10 +538,10 @@ actualupdate msg model =
         ( TauriPublicReplyData val, state ) ->
             case JD.decodeValue M.serverResponseDecoder val of
                 Ok td ->
-                    actualupdate (PublicReplyData (Ok (Debug.log "td" td))) model
+                    actualupdate (PublicReplyData (Ok td)) model
 
                 Err e ->
-                    ( displayMessageDialog model <| JD.errorToString (Debug.log "e" e)
+                    ( displayMessageDialog model <| JD.errorToString e
                     , Cmd.none
                     )
 
@@ -551,7 +551,7 @@ actualupdate msg model =
                     actualupdate (AutomatoMsgReplyData td.mw (Ok td.sr)) model
 
                 Err e ->
-                    ( displayMessageDialog model <| JD.errorToString (Debug.log "e" e)
+                    ( displayMessageDialog model <| JD.errorToString e
                     , Cmd.none
                     )
 
