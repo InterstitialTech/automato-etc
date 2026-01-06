@@ -28,15 +28,21 @@ pub struct AutomatoMsg {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Elm, ElmJson)]
-pub struct WhatMsg {
-    pub what: String,
-    pub msg: AutomatoMsg,
+pub struct MsgWhat {
+    pub id: i64,
+    pub field: Option<i64>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Elm, ElmJson)]
-pub struct WhatError {
-    pub what: String,
-    pub msg: serial_error::Error,
+#[derive(Serialize, Deserialize, Debug, Elm, ElmJson)]
+pub struct MwMsg {
+    pub mw: MsgWhat,
+    pub pm: PublicMessage,
+}
+
+#[derive(Serialize, Deserialize, Elm, ElmJson)]
+pub struct MwReply {
+    pub mw: MsgWhat,
+    pub sr: ServerResponse,
 }
 
 pub fn get_port_info(port: &serialport::SerialPortInfo) -> SerialPortInfo {

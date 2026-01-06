@@ -239,8 +239,9 @@ async fn err_main() -> Result<(), Box<dyn Error>> {
                     messages::ServerResponse,
                     messages::PublicMessage,
                     messages::AutomatoMsg,
-                    messages::WhatMsg,
-                    messages::WhatError,
+                    messages::MsgWhat,
+                    messages::MwMsg,
+                    messages::MwReply,
                     messages::UsbPortInfo,
                     messages::SerialPortType,
                     messages::SerialPortInfo

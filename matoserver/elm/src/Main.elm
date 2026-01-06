@@ -34,7 +34,7 @@ import WindowKeys
 type Msg
     = ShowMessageMsg ShowMessage.Msg
     | PublicReplyData (Result Http.Error M.ServerResponse)
-    | AutomatoMsgReplyData AutomatoView.MsgWhat (Result Http.Error M.ServerResponse)
+    | AutomatoMsgReplyData M.MsgWhat (Result Http.Error M.ServerResponse)
     | LoadUrl String
     | InternalUrl Url
     | SelectedText JD.Value
@@ -48,6 +48,7 @@ type Msg
     | AutomatoListingMsg AutomatoListing.Msg
     | AutomatoViewMsg AutomatoView.Msg
     | TauriPublicReplyData JD.Value
+    | TauriAutomatoMsgReplyData JD.Value
     | Noop
 
 
@@ -229,6 +230,9 @@ showMessage msg =
         TauriPublicReplyData _ ->
             "TauriPublicReplyData"
 
+        TauriAutomatoMsgReplyData _ ->
+            "TauriAutomatoMsgReplyData"
+
 
 showState : State -> String
 showState state =
@@ -282,11 +286,11 @@ viewState size state model =
 
 sendPIMsg : Bool -> String -> M.PublicMessage -> Cmd Msg
 sendPIMsg tauri location msg =
-    sendPIMsgExp tauri location msg PublicReplyData
+    sendPIMsgPr tauri location msg
 
 
-sendPIMsgExp : Bool -> String -> M.PublicMessage -> (Result Http.Error M.ServerResponse -> Msg) -> Cmd Msg
-sendPIMsgExp tauri location msg tomsg =
+sendPIMsgPr : Bool -> String -> M.PublicMessage -> Cmd Msg
+sendPIMsgPr tauri location msg =
     if tauri then
         sendPIValueTauri <| M.publicMessageEncoder msg
 
@@ -294,7 +298,24 @@ sendPIMsgExp tauri location msg tomsg =
         Http.post
             { url = location ++ "/public"
             , body = Http.jsonBody (M.publicMessageEncoder msg)
-            , expect = Http.expectJson tomsg M.serverResponseDecoder
+            , expect = Http.expectJson PublicReplyData M.serverResponseDecoder
+            }
+
+
+sendPIMsgAmrd : Bool -> String -> M.PublicMessage -> M.MsgWhat -> Cmd Msg
+sendPIMsgAmrd tauri location msg msgwhat =
+    if tauri then
+        let
+            mw =
+                { mw = msgwhat, pm = msg }
+        in
+        sendPIWhatValueTauri <| M.mwMsgEncoder mw
+
+    else
+        Http.post
+            { url = location ++ "/public"
+            , body = Http.jsonBody (M.publicMessageEncoder msg)
+            , expect = Http.expectJson (AutomatoMsgReplyData msgwhat) M.serverResponseDecoder
             }
 
 
@@ -517,10 +538,20 @@ actualupdate msg model =
         ( TauriPublicReplyData val, state ) ->
             case JD.decodeValue M.serverResponseDecoder val of
                 Ok td ->
-                    actualupdate (PublicReplyData (Ok td)) model
+                    actualupdate (PublicReplyData (Ok (Debug.log "td" td))) model
 
                 Err e ->
-                    ( displayMessageDialog model <| JD.errorToString e
+                    ( displayMessageDialog model <| JD.errorToString (Debug.log "e" e)
+                    , Cmd.none
+                    )
+
+        ( TauriAutomatoMsgReplyData val, state ) ->
+            case JD.decodeValue M.mwReplyDecoder val of
+                Ok td ->
+                    actualupdate (AutomatoMsgReplyData td.mw (Ok td.sr)) model
+
+                Err e ->
+                    ( displayMessageDialog model <| JD.errorToString (Debug.log "e" e)
                     , Cmd.none
                     )
 
@@ -543,7 +574,7 @@ actualupdate msg model =
                             )
 
                         M.SrSerialPortOpened s ->
-                            ( model, sendPIMsg model.tauri model.location <| M.PrGetAutomatoList )
+                            ( model, sendPIMsg model.tauri model.location M.PrGetAutomatoList )
 
                         M.SrAutomatos x ->
                             ( { model
@@ -589,7 +620,7 @@ actualupdate msg model =
                             )
 
                         M.SrSerialPortOpened s ->
-                            ( model, sendPIMsg model.tauri model.location <| M.PrGetAutomatoList )
+                            ( model, sendPIMsg model.tauri model.location M.PrGetAutomatoList )
 
                         M.SrAutomatos x ->
                             ( { model
@@ -735,7 +766,7 @@ handleAutomatoView model ( nm, cmd ) =
                 | state = AutomatoView nm
                 , requestIdCount = 0
               }
-            , sendPIMsgExp model.tauri model.location (M.PrAutomatoMsg am) (AutomatoMsgReplyData what)
+            , sendPIMsgAmrd model.tauri model.location (M.PrAutomatoMsg am) what
             )
 
         AutomatoView.None ->
@@ -798,20 +829,19 @@ initialPage curmodel =
 init : Flags -> Url -> Browser.Navigation.Key -> Time.Zone -> Int -> ( Model, Cmd Msg )
 init flags url key zone fontsize =
     let
-
         imodel =
-                { state =
-                    PubShowMessage { message = "loading..." } Nothing
-                , size = { width = flags.width, height = flags.height }
-                , location = flags.location
-                , tauri = flags.tauri
-                , appname = "matoserver"
-                , navkey = key
-                , timezone = zone
-                , savedRoute = { route = Top, save = False }
-                , fontsize = fontsize
-                , requestIdCount = 0
-                }
+            { state =
+                PubShowMessage { message = "loading..." } Nothing
+            , size = { width = flags.width, height = flags.height }
+            , location = flags.location
+            , tauri = flags.tauri
+            , appname = "matoserver"
+            , navkey = key
+            , timezone = zone
+            , savedRoute = { route = Top, save = False }
+            , fontsize = fontsize
+            , requestIdCount = 0
+            }
 
         -- setkeys =
         --     skcommand <|
@@ -879,6 +909,7 @@ main =
                     , keyreceive
                     , LS.localVal ReceiveLocalVal
                     , receivePITauriResponse TauriPublicReplyData
+                    , receivePIWhatTauriResponse TauriAutomatoMsgReplyData
                     ]
         , onUrlRequest = urlRequest
         , onUrlChange = UrlChanged
@@ -898,6 +929,12 @@ port sendPIValueTauri : JD.Value -> Cmd msg
 
 
 port receivePITauriResponse : (JD.Value -> msg) -> Sub msg
+
+
+port sendPIWhatValueTauri : JD.Value -> Cmd msg
+
+
+port receivePIWhatTauriResponse : (JD.Value -> msg) -> Sub msg
 
 
 keyreceive =

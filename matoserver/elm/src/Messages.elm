@@ -132,46 +132,67 @@ automatoMsgDecoder =
         |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "message" (payloadEnumDecoder)))
 
 
-type alias WhatMsg =
-    { what : String
-    , msg : AutomatoMsg
+type alias MsgWhat =
+    { id : Int
+    , field : Maybe (Int)
     }
 
 
-whatMsgEncoder : WhatMsg -> Json.Encode.Value
-whatMsgEncoder struct =
+msgWhatEncoder : MsgWhat -> Json.Encode.Value
+msgWhatEncoder struct =
     Json.Encode.object
-        [ ( "what", (Json.Encode.string) struct.what )
-        , ( "msg", (automatoMsgEncoder) struct.msg )
+        [ ( "id", (Json.Encode.int) struct.id )
+        , ( "field", (Maybe.withDefault Json.Encode.null << Maybe.map (Json.Encode.int)) struct.field )
         ]
 
 
-whatMsgDecoder : Json.Decode.Decoder WhatMsg
-whatMsgDecoder =
-    Json.Decode.succeed WhatMsg
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "what" (Json.Decode.string)))
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "msg" (automatoMsgDecoder)))
+msgWhatDecoder : Json.Decode.Decoder MsgWhat
+msgWhatDecoder =
+    Json.Decode.succeed MsgWhat
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "id" (Json.Decode.int)))
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "field" (Json.Decode.nullable (Json.Decode.int))))
 
 
-type alias WhatError =
-    { what : String
-    , msg : Error
+type alias MwMsg =
+    { mw : MsgWhat
+    , pm : PublicMessage
     }
 
 
-whatErrorEncoder : WhatError -> Json.Encode.Value
-whatErrorEncoder struct =
+mwMsgEncoder : MwMsg -> Json.Encode.Value
+mwMsgEncoder struct =
     Json.Encode.object
-        [ ( "what", (Json.Encode.string) struct.what )
-        , ( "msg", (errorEncoder) struct.msg )
+        [ ( "mw", (msgWhatEncoder) struct.mw )
+        , ( "pm", (publicMessageEncoder) struct.pm )
         ]
 
 
-whatErrorDecoder : Json.Decode.Decoder WhatError
-whatErrorDecoder =
-    Json.Decode.succeed WhatError
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "what" (Json.Decode.string)))
-        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "msg" (errorDecoder)))
+mwMsgDecoder : Json.Decode.Decoder MwMsg
+mwMsgDecoder =
+    Json.Decode.succeed MwMsg
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "mw" (msgWhatDecoder)))
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "pm" (publicMessageDecoder)))
+
+
+type alias MwReply =
+    { mw : MsgWhat
+    , sr : ServerResponse
+    }
+
+
+mwReplyEncoder : MwReply -> Json.Encode.Value
+mwReplyEncoder struct =
+    Json.Encode.object
+        [ ( "mw", (msgWhatEncoder) struct.mw )
+        , ( "sr", (serverResponseEncoder) struct.sr )
+        ]
+
+
+mwReplyDecoder : Json.Decode.Decoder MwReply
+mwReplyDecoder =
+    Json.Decode.succeed MwReply
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "mw" (msgWhatDecoder)))
+        |> Json.Decode.andThen (\x -> Json.Decode.map x (Json.Decode.field "sr" (serverResponseDecoder)))
 
 
 type alias UsbPortInfo =
