@@ -4,7 +4,7 @@ matomsg/target/
 matoserver/elm/elm-stuff/
 matoserver/server/static/
 matoserver/server/target/
-matoserver//target/
+matoserver/lib/target/
 rustlib/Cargo.lock
 rustlib/target/
 testmsgs/cmsgs-out/
