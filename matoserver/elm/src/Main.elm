@@ -744,10 +744,6 @@ handleAutomatoView model ( nm, cmd ) =
 
 preinit : Flags -> Url -> Browser.Navigation.Key -> ( PiModel, Cmd Msg )
 preinit flags url key =
-    let
-        _ =
-            Debug.log "piinit" "preinit"
-    in
     ( PreInit
         { flags = flags
         , url = url
@@ -783,10 +779,6 @@ preinit flags url key =
 
 initialPage : Model -> ( Model, Cmd Msg )
 initialPage curmodel =
-    let
-        _ =
-            Debug.log "initialPagh" "agea"
-    in
     ( { curmodel
         | state = PubShowMessage { message = "retrieving serial port list" } Nothing
       }
@@ -806,11 +798,8 @@ initialPage curmodel =
 init : Flags -> Url -> Browser.Navigation.Key -> Time.Zone -> Int -> ( Model, Cmd Msg )
 init flags url key zone fontsize =
     let
-        _ =
-            Debug.log "here's jonnay" flags
 
         imodel =
-            Debug.log "blah"
                 { state =
                     PubShowMessage { message = "loading..." } Nothing
                 , size = { width = flags.width, height = flags.height }

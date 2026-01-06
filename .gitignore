@@ -2,10 +2,9 @@ matomsg/cmsgs-out/
 matomsg/rustmsgs-out/
 matomsg/target/
 matoserver/elm/elm-stuff/
-# matoserver/server/config.toml
 matoserver/server/static/
 matoserver/server/target/
-matoserver/lib/target/
+matoserver//target/
 rustlib/Cargo.lock
 rustlib/target/
 testmsgs/cmsgs-out/
