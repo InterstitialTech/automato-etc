@@ -1,26 +1,26 @@
-use clap::Arg;
-use std::time::Duration;
-mod config;
-mod data;
-mod interfaces;
-mod messages;
-mod util;
 use crate::data::ServerData;
 use actix_session::Session;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use automato::automatomsg as am;
+use clap::Arg;
 use config::Config;
 use log::{error, info};
+use matoserverlib::config;
+use matoserverlib::data;
+use matoserverlib::interfaces;
+use matoserverlib::messages;
+use matoserverlib::serial_error;
+use matoserverlib::util;
 use messages::{PublicMessage, ServerResponse};
-use std::path::Path;
-mod serial_error;
 use serialport;
 use simple_error::{bail, simple_error};
 use std::env;
 use std::error::Error;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 /*
 use actix_files::NamedFile;
 
