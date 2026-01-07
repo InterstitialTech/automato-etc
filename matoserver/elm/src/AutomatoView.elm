@@ -8,7 +8,7 @@ import Element.Background as EBk
 import Element.Events as EE
 import Element.Font as EF
 import Element.Input as EI
-import Messages exposing (AutomatoMsg)
+import Messages exposing (AutomatoMsg, MsgWhat)
 import Payload exposing (AutomatoId)
 import SerialError
 import TangoColors as TC
@@ -35,12 +35,6 @@ type alias Field =
 type alias PendingMsg =
     { automatoMsg : AutomatoMsg
     , what : MsgWhat
-    }
-
-
-type alias MsgWhat =
-    { id : Int
-    , field : Maybe Int
     }
 
 

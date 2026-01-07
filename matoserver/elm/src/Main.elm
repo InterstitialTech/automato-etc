@@ -34,7 +34,7 @@ import WindowKeys
 type Msg
     = ShowMessageMsg ShowMessage.Msg
     | PublicReplyData (Result Http.Error M.ServerResponse)
-    | AutomatoMsgReplyData AutomatoView.MsgWhat (Result Http.Error M.ServerResponse)
+    | AutomatoMsgReplyData M.MsgWhat (Result Http.Error M.ServerResponse)
     | LoadUrl String
     | InternalUrl Url
     | SelectedText JD.Value
@@ -47,6 +47,8 @@ type Msg
     | SerialListingMsg SerialListing.Msg
     | AutomatoListingMsg AutomatoListing.Msg
     | AutomatoViewMsg AutomatoView.Msg
+    | TauriPublicReplyData JD.Value
+    | TauriAutomatoMsgReplyData JD.Value
     | Noop
 
 
@@ -78,6 +80,7 @@ type alias Model =
     { state : State
     , size : Util.Size
     , location : String
+    , tauri : Bool
     , appname : String
     , navkey : Browser.Navigation.Key
     , timezone : Time.Zone
@@ -127,7 +130,8 @@ routeState model route =
 
         AutomatoViewR id ->
             ( (displayMessageDialog model "loading automato info").state
-            , sendPIMsg model.location
+            , sendPIMsg model.tauri
+                model.location
                 (M.PrAutomatoMsg
                     { id = id
                     , message = Payload.PeReadinfo
@@ -223,6 +227,12 @@ showMessage msg =
         AutomatoViewMsg _ ->
             "AutomatoViewMsg"
 
+        TauriPublicReplyData _ ->
+            "TauriPublicReplyData"
+
+        TauriAutomatoMsgReplyData _ ->
+            "TauriAutomatoMsgReplyData"
+
 
 showState : State -> String
 showState state =
@@ -274,18 +284,57 @@ viewState size state model =
             E.map AutomatoViewMsg <| AutomatoView.view size model.timezone em
 
 
-sendPIMsg : String -> M.PublicMessage -> Cmd Msg
-sendPIMsg location msg =
-    sendPIMsgExp location msg PublicReplyData
+sendPIMsg : Bool -> String -> M.PublicMessage -> Cmd Msg
+sendPIMsg tauri location msg =
+    sendPIMsgPr tauri location msg
 
 
-sendPIMsgExp : String -> M.PublicMessage -> (Result Http.Error M.ServerResponse -> Msg) -> Cmd Msg
-sendPIMsgExp location msg tomsg =
-    Http.post
-        { url = location ++ "/public"
-        , body = Http.jsonBody (M.publicMessageEncoder msg)
-        , expect = Http.expectJson tomsg M.serverResponseDecoder
-        }
+sendPIMsgPr : Bool -> String -> M.PublicMessage -> Cmd Msg
+sendPIMsgPr tauri location msg =
+    if tauri then
+        sendPIValueTauri <| M.publicMessageEncoder msg
+
+    else
+        Http.post
+            { url = location ++ "/public"
+            , body = Http.jsonBody (M.publicMessageEncoder msg)
+            , expect = Http.expectJson PublicReplyData M.serverResponseDecoder
+            }
+
+
+sendPIMsgAmrd : Bool -> String -> M.PublicMessage -> M.MsgWhat -> Cmd Msg
+sendPIMsgAmrd tauri location msg msgwhat =
+    if tauri then
+        let
+            mw =
+                { mw = msgwhat, pm = msg }
+        in
+        sendPIWhatValueTauri <| M.mwMsgEncoder mw
+
+    else
+        Http.post
+            { url = location ++ "/public"
+            , body = Http.jsonBody (M.publicMessageEncoder msg)
+            , expect = Http.expectJson (AutomatoMsgReplyData msgwhat) M.serverResponseDecoder
+            }
+
+
+
+-- sendPIMsg : FileUrlInfo -> Data.PublicRequest -> Cmd Msg
+-- sendPIMsg fui msg =
+--     sendPIMsgExp fui msg PublicReplyData
+-- sendPIMsgExp : FileUrlInfo -> Data.PublicRequest -> (Result Http.Error ( Time.Posix, Data.PublicReply ) -> Msg) -> Cmd Msg
+-- sendPIMsgExp fui msg tomsg =
+--     if fui.tauri then
+--         sendPIValueTauri <| Data.publicRequestEncoder msg
+--     else
+--         HE.postJsonTask
+--             { url = fui.location ++ "/public"
+--             , body = Http.jsonBody (Data.publicRequestEncoder msg)
+--             , decoder = Data.publicReplyDecoder
+--             }
+--             |> Task.andThen (\x -> Task.map (\posix -> ( posix, x )) Time.now)
+--             |> Task.attempt tomsg
 
 
 piview : PiModel -> { title : String, body : List (Html Msg) }
@@ -486,6 +535,26 @@ actualupdate msg model =
         ( WindowSize s, _ ) ->
             ( { model | size = s }, Cmd.none )
 
+        ( TauriPublicReplyData val, state ) ->
+            case JD.decodeValue M.serverResponseDecoder val of
+                Ok td ->
+                    actualupdate (PublicReplyData (Ok td)) model
+
+                Err e ->
+                    ( displayMessageDialog model <| JD.errorToString e
+                    , Cmd.none
+                    )
+
+        ( TauriAutomatoMsgReplyData val, state ) ->
+            case JD.decodeValue M.mwReplyDecoder val of
+                Ok td ->
+                    actualupdate (AutomatoMsgReplyData td.mw (Ok td.sr)) model
+
+                Err e ->
+                    ( displayMessageDialog model <| JD.errorToString e
+                    , Cmd.none
+                    )
+
         ( PublicReplyData urd, state ) ->
             case urd of
                 Err e ->
@@ -505,7 +574,7 @@ actualupdate msg model =
                             )
 
                         M.SrSerialPortOpened s ->
-                            ( model, sendPIMsg model.location <| M.PrGetAutomatoList )
+                            ( model, sendPIMsg model.tauri model.location M.PrGetAutomatoList )
 
                         M.SrAutomatos x ->
                             ( { model
@@ -551,7 +620,7 @@ actualupdate msg model =
                             )
 
                         M.SrSerialPortOpened s ->
-                            ( model, sendPIMsg model.location <| M.PrGetAutomatoList )
+                            ( model, sendPIMsg model.tauri model.location M.PrGetAutomatoList )
 
                         M.SrAutomatos x ->
                             ( { model
@@ -619,7 +688,7 @@ actualupdate msg model =
             case cmd of
                 SerialListing.Selected s ->
                     ( { model | state = SerialListing nm }
-                    , sendPIMsg model.location <|
+                    , sendPIMsg model.tauri model.location <|
                         M.PrOpenSerialPort s
                     )
 
@@ -648,7 +717,7 @@ actualupdate msg model =
             case cmd of
                 AutomatoListing.Selected id ->
                     ( { model | state = AutomatoListing nm }
-                    , sendPIMsg model.location <|
+                    , sendPIMsg model.tauri model.location <|
                         M.PrAutomatoMsg
                             { id = id
                             , message = Payload.PeReadinfo
@@ -686,7 +755,7 @@ handleAutomatoView model ( nm, cmd ) =
     case cmd of
         AutomatoView.Done ->
             ( { model | state = AutomatoView nm }
-            , sendPIMsg model.location <| M.PrGetAutomatoList
+            , sendPIMsg model.tauri model.location <| M.PrGetAutomatoList
             )
 
         AutomatoView.ShowError e ->
@@ -697,7 +766,7 @@ handleAutomatoView model ( nm, cmd ) =
                 | state = AutomatoView nm
                 , requestIdCount = 0
               }
-            , sendPIMsgExp model.location (M.PrAutomatoMsg am) (AutomatoMsgReplyData what)
+            , sendPIMsgAmrd model.tauri model.location (M.PrAutomatoMsg am) what
             )
 
         AutomatoView.None ->
@@ -744,7 +813,7 @@ initialPage curmodel =
     ( { curmodel
         | state = PubShowMessage { message = "retrieving serial port list" } Nothing
       }
-    , sendPIMsg curmodel.location <| M.PrGetSerialPortList
+    , sendPIMsg curmodel.tauri curmodel.location <| M.PrGetSerialPortList
     )
         |> (\( m, c ) ->
                 ( m
@@ -765,6 +834,7 @@ init flags url key zone fontsize =
                 PubShowMessage { message = "loading..." } Nothing
             , size = { width = flags.width, height = flags.height }
             , location = flags.location
+            , tauri = flags.tauri
             , appname = "matoserver"
             , navkey = key
             , timezone = zone
@@ -773,52 +843,56 @@ init flags url key zone fontsize =
             , requestIdCount = 0
             }
 
-        setkeys =
-            skcommand <|
-                WindowKeys.SetWindowKeys
-                    [ { key = "s", ctrl = True, alt = False, shift = False, preventDefault = True }
-                    , { key = "s", ctrl = True, alt = True, shift = False, preventDefault = True }
-                    , { key = "e", ctrl = True, alt = True, shift = False, preventDefault = True }
-                    , { key = "r", ctrl = True, alt = True, shift = False, preventDefault = True }
-                    , { key = "v", ctrl = True, alt = True, shift = False, preventDefault = True }
-                    , { key = "Enter", ctrl = False, alt = False, shift = False, preventDefault = False }
-                    ]
+        -- setkeys =
+        --     skcommand <|
+        --         WindowKeys.SetWindowKeys
+        --             [ { key = "s", ctrl = True, alt = False, shift = False, preventDefault = True }
+        --             , { key = "s", ctrl = True, alt = True, shift = False, preventDefault = True }
+        --             , { key = "e", ctrl = True, alt = True, shift = False, preventDefault = True }
+        --             , { key = "r", ctrl = True, alt = True, shift = False, preventDefault = True }
+        --             , { key = "v", ctrl = True, alt = True, shift = False, preventDefault = True }
+        --             , { key = "Enter", ctrl = False, alt = False, shift = False, preventDefault = False }
+        --             ]
     in
-    parseUrl url
-        |> Maybe.andThen
-            (\s ->
-                case s of
-                    Top ->
-                        Nothing
+    initialPage imodel
 
-                    _ ->
-                        Just s
-            )
-        |> Maybe.map
-            (routeState
-                imodel
-            )
-        |> Maybe.map
-            (\( rs, rcmd ) ->
-                ( { imodel
-                    | state = rs
-                  }
-                , Cmd.batch [ rcmd, setkeys ]
-                )
-            )
-        |> Maybe.withDefault
-            (let
-                ( m, c ) =
-                    initialPage imodel
-             in
-             ( m
-             , Cmd.batch
-                [ c
-                , setkeys
-                , Browser.Navigation.replaceUrl key "/"
-                ]
-             )
-            )
+
+
+-- parseUrl (Debug.log "url" url)
+--     |> Maybe.andThen
+--         (\s ->
+--             case s of
+--                 Top ->
+--                     Nothing
+--                 _ ->
+--                     Just s
+--         )
+--     |> Maybe.map
+--         (routeState
+--             imodel
+--         )
+--     |> Maybe.map
+--         (\( rs, rcmd ) ->
+--             ( { imodel
+--                 | state = rs
+--               }
+--               -- , Cmd.batch [ rcmd, setkeys ]
+--             , Cmd.batch [ rcmd ]
+--             )
+--         )
+--     |> Maybe.withDefault
+--         (let
+--             ( m, c ) =
+--                 initialPage imodel
+--          in
+--          ( m
+--          , Cmd.batch
+--             [ c
+--             -- , setkeys
+--             , Browser.Navigation.replaceUrl key "/"
+--             ]
+--          )
+--         )
 
 
 main : Platform.Program Flags PiModel Msg
@@ -834,6 +908,8 @@ main =
                     , Browser.Events.onResize (\w h -> WindowSize { width = w, height = h })
                     , keyreceive
                     , LS.localVal ReceiveLocalVal
+                    , receivePITauriResponse TauriPublicReplyData
+                    , receivePIWhatTauriResponse TauriAutomatoMsgReplyData
                     ]
         , onUrlRequest = urlRequest
         , onUrlChange = UrlChanged
@@ -847,6 +923,18 @@ port receiveSelectedText : (JD.Value -> msg) -> Sub msg
 
 
 port receiveKeyMsg : (JD.Value -> msg) -> Sub msg
+
+
+port sendPIValueTauri : JD.Value -> Cmd msg
+
+
+port receivePITauriResponse : (JD.Value -> msg) -> Sub msg
+
+
+port sendPIWhatValueTauri : JD.Value -> Cmd msg
+
+
+port receivePIWhatTauriResponse : (JD.Value -> msg) -> Sub msg
 
 
 keyreceive =
