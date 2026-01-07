@@ -249,7 +249,7 @@ fn err_main() -> Result<(), Box<dyn Error>> {
         .timeout(Duration::from_millis(timeout))
         .open()?;
 
-    // let debug_reply = true;
+    let debug_reply = false;
     unsafe {
         match (mb_automato_lora_addr, mb_automato_espnow_addr) {
             (Some(loraaddr), _) => am::write_lora_message(&mut *port, &mb, loraaddr)?,
