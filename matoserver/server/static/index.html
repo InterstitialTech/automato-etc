@@ -63,7 +63,9 @@
       app = Elm.Main.init({
         node: document.getElementById('elm'),
         flags: { location : document.location.origin || "", 
-                 useragent : navigator.userAgent, 
+                 useragent : navigator.userAgent,
+                 tauri : false,
+                 mobile : false,
                  width : window.innerWidth, 
                  height : window.innerHeight}});
       // local storage
